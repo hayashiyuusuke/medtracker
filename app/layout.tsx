@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import HomeButton from '@/components/HomeButton';
+import Link from 'next/link';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +29,27 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+  <header className="fixed top-0 left-0 right-0 z-50 w-full bg-[#dff7e6] border-b border-green-200 shadow-sm h-[140px]">
+      {/* responsive header: md and up use large header, mobile uses compact header */}
+      <div className="w-full h-full">
+  <div className="max-w-5xl mx-auto px-5 h-full flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <HomeButton className="p-2 rounded-md" />
+            <div className="ml-5 text-lg md:text-2xl font-semibold">MedTracker</div>
+          </div>
+
+          <div className="flex gap-[8px] md:gap-[20px] items-center">
+            <Link href="/medications" className="btn">処方一覧</Link>
+            <Link href="/medications/new" className="btn btn-primary">お薬登録</Link>
+            <Link href="/dose_history" className="btn mr-5">服薬履歴</Link>
+          </div>
+        </div>
+      </div>
+    </header>
+
+  <main className="pt-[140px] mx-auto max-w-5xl px-5">
+          {children}
+        </main>
       </body>
     </html>
   );

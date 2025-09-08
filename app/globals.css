@@ -3,26 +3,44 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #dff7e6; /* 薄緑 */
+  --foreground: #000000; /* 黒 */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* NOTE:
+  Removed non-standard `@theme` at-rule because many editors/linters
+  report it as an unknown at-rule. The same values are available via
+  the :root variables above. If you intentionally used `@theme`
+  provided by a tool/plugin, re-enable it after ensuring the plugin
+  is configured in your build and your editor understands it.
+*/
 
 @media (prefers-color-scheme: dark) {
+  /* ダークモードでも同じ配色を使う要求のため同一色を適用 */
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #dff7e6;
+    --foreground: #000000;
   }
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  padding: 0 20px; /* 上下0、左右20px */
+}
+
+/* Ensure header sits flush at the very top even if other styles change */
+header {
+  position: fixed; /* redundant with Tailwind but ensures top-0 behavior */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
 }

@@ -1,0 +1,13 @@
+{
+  // Ignore unknown at-rules in the CSS/SCSS language server (workspace-level)
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+
+  // Help Tailwind IntelliSense recognize classes in JS/TS files
+  "tailwindCSS.includeLanguages": {
+    "javascript": "html",
+    "javascriptreact": "html",
+    "typescript": "html",
+    "typescriptreact": "html"
+  }
+}
