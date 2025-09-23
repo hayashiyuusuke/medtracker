@@ -8,8 +8,7 @@ import { medicationRecordService } from '../../../lib/database';
 import { supabase } from '../../../lib/supabaseClient';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import SimpleQRReader from '../../../components/SimpleQRReader';
-import MultipleMedicationsModal from '../../../components/MultipleMedicationsModal';
-import { processQrCode, type MedicationData, debugQrData } from '../../../lib/unifiedQrParser';
+import { SimpleJahisParser, type MedicationInfo } from '../../../lib/simpleJahisParser';
 import MedicationSearch from '../../../components/MedicationSearch';
 import type { Medication, MedicationRecordFormData } from '../../../types/database';
 
@@ -20,8 +19,6 @@ function NewMedicationPage() {
   const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showMedicationsModal, setShowMedicationsModal] = useState(false);
-  const [detectedMedications, setDetectedMedications] = useState<any[]>([]);
   
   // デバッグ用: showQRReaderの変更を監視
   useEffect(() => {
@@ -44,7 +41,7 @@ function NewMedicationPage() {
 
   // QRコード読み取り成功時の処理
   const handleQRResult = (qrDataString: string) => {
-    console.log('=== 統一QRコード処理開始 ===');
+    console.log('=== QRコード読み取り成功 ===');
     console.log('生データ:', qrDataString);
     console.log('データ長:', qrDataString.length);
     
@@ -57,54 +54,34 @@ function NewMedicationPage() {
 
     // データを正規化
     const normalizedData = qrDataString.trim();
-    console.log('正規化後のデータ:', normalizedData.substring(0, 100) + '...');
+    console.log('正規化後のデータ:', normalizedData);
+    console.log('正規化後の最初の10文字:', normalizedData.substring(0, 10));
     
-    // デバッグ情報を出力
-    debugQrData(normalizedData);
+    // SimpleJahisParserを使用してデータを解析
+    console.log('=== データ解析開始 ===');
     
     try {
-      // 🎯 新しい統一パーサーを使用
-      const medicationData = processQrCode(normalizedData);
+      // SimpleJahisParserで解析
+      const medicationInfo = SimpleJahisParser.parseQRData(normalizedData);
       
-      if (medicationData && medicationData.medications.length > 0) {
-        console.log('🎯 統一パーサーで解析成功:', medicationData);
+      if (medicationInfo) {
+        console.log('🎯 解析成功:', medicationInfo);
         
-        // 複数薬剤が検出された場合
-        if (medicationData.medications.length > 1) {
-          console.log(`🔍 ${medicationData.medications.length}種類の薬剤を検出`);
-          console.log('薬剤選択モーダルを表示します');
-          
-          // MedicationData形式をMultipleMedicationsModalで使用する形式に変換
-          const modalMedications = medicationData.medications.map((med, index) => ({
-            name: med.name,
-            quantity: med.quantity || '1',
-            unit: med.unit || '錠',
-            dosage: med.dosage,
-            days: med.days?.toString() || '1'
-          }));
-          
-          setDetectedMedications(modalMedications);
-          setShowMedicationsModal(true);
-          setShowQRReader(false);
-          return;
-        }
-
-        // 単一薬剤の場合、直接フォームに設定
-        const medication = medicationData.medications[0];
+        // フォームデータに変換・設定
         const newFormData = {
-          prescription_date: medicationData.prescribedDate,
-          prescribed_by: '', // 統一パーサーには処方医情報がないため空文字
-          hospital_name: medicationData.hospitalName,
-          pharmacy_name: '', // 統一パーサーには薬局情報がないため空文字
-          medication_name: medication.name,
-          dosage_amount: parseFloat(medication.quantity || '1'),
-          dosage_unit: medication.unit || '錠',
-          frequency_per_day: parseFloat(medication.dosage.match(/\d+/)?.[0] || '1'),
-          duration_days: medication.days || 1,
-          total_amount: (parseFloat(medication.quantity || '1')) * 
-                       (parseFloat(medication.dosage.match(/\d+/)?.[0] || '1')) * 
-                       (medication.days || 1),
-          instructions: `${medication.name} - ${medication.dosage} (${medicationData.sourceFormat}形式から自動入力)`,
+          prescription_date: medicationInfo.prescriptionDate,
+          prescribed_by: '', // SimpleJahisParserには処方医情報がないため空文字
+          hospital_name: medicationInfo.hospitalName,
+          pharmacy_name: '', // SimpleJahisParserには薬局情報がないため空文字
+          medication_name: medicationInfo.medicationName,
+          dosage_amount: parseFloat(medicationInfo.dosage.match(/\d+/)?.[0] || '1'),
+          dosage_unit: medicationInfo.dosage.replace(/\d+/g, '').trim() || '錠',
+          frequency_per_day: parseFloat(medicationInfo.frequency.match(/\d+/)?.[0] || '1'),
+          duration_days: parseFloat(medicationInfo.duration.match(/\d+/)?.[0] || '1'),
+          total_amount: parseFloat(medicationInfo.dosage.match(/\d+/)?.[0] || '1') * 
+                       parseFloat(medicationInfo.frequency.match(/\d+/)?.[0] || '1') * 
+                       parseFloat(medicationInfo.duration.match(/\d+/)?.[0] || '1'),
+          instructions: `${medicationInfo.medicationName} - QRデータから自動入力`,
         };
 
         console.log('📝 フォームデータに変換:', newFormData);
@@ -122,52 +99,19 @@ function NewMedicationPage() {
         // QRリーダーを閉じる
         setShowQRReader(false);
         return;
-        
       } else {
-        console.log('❌ 統一パーサーで解析失敗または薬剤データなし');
-        setError('QRコードデータの解析に失敗しました。対応していない形式の可能性があります。');
+        console.log('解析失敗または未知の形式として認識');
+        setError('QRコードデータの解析に失敗しました。正しいお薬手帳のQRコードをスキャンしてください。');
       }
       
       setShowQRReader(false);
+      return;
 
     } catch (error) {
-      console.error('❌ 統一QR解析エラー:', error);
+      console.error('QR解析エラー:', error);
       setError('QRコードの解析中にエラーが発生しました。');
       setShowQRReader(false);
     }
-  };
-
-  // 複数薬剤から選択された薬剤をフォームに設定
-  const handleSelectMedication = (medication: any) => {
-    console.log('選択された薬剤:', medication);
-    
-    const newFormData = {
-      prescription_date: new Date().toISOString().split('T')[0], // 現在の日付
-      prescribed_by: '',
-      hospital_name: '',
-      pharmacy_name: '',
-      medication_name: medication.name,
-      dosage_amount: parseFloat(medication.quantity) || 1,
-      dosage_unit: medication.unit || '錠',
-      frequency_per_day: parseFloat(medication.dosage.match(/\d+/)?.[0] || '1'),
-      duration_days: parseFloat(medication.days) || 1,
-      total_amount: (parseFloat(medication.quantity) || 1) * 
-                   (parseFloat(medication.dosage.match(/\d+/)?.[0] || '1')) * 
-                   (parseFloat(medication.days) || 1),
-      instructions: `${medication.name} - ${medication.dosage}`,
-    };
-
-    console.log('📝 選択された薬剤をフォームデータに変換:', newFormData);
-
-    // フォームに反映
-    setFormData((prev: MedicationRecordFormData) => ({
-      ...prev,
-      ...newFormData
-    }));
-
-    // 成功メッセージ
-    setError('');
-    console.log('✅ 選択された薬剤情報をフォームに設定しました');
   };
 
   // 処方記録の保存
@@ -450,14 +394,6 @@ function NewMedicationPage() {
               </div>
             </div>
           )}
-
-          {/* 複数薬剤選択モーダル */}
-          <MultipleMedicationsModal
-            medications={detectedMedications}
-            isOpen={showMedicationsModal}
-            onClose={() => setShowMedicationsModal(false)}
-            onSelectMedication={handleSelectMedication}
-          />
         </div>
       </div>
     </ProtectedRoute>

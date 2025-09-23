@@ -1,237 +1,250 @@
-"use client";
-import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import { format as formatDate } from 'date-fns';
-import Toast from "@/components/Toast";
+'use client';
 
-type DoseRow = {
-  id: number;
-  user_id: string;
-  medication_record_id: number | null;
-  taken_at: string | null;
-  note: string | null;
-  created_at: string;
-  medication_records?: {
-    dosage?: string | null;
-    usage?: string | null;
-    medication_id?: number | null;
-  } | null;
-};
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '../../contexts/AuthContext';
+import { doseRecordService } from '../../lib/database';
+import ProtectedRoute from '../../components/ProtectedRoute';
+import type { DoseRecord } from '../../types/database';
 
-export default function DoseHistoryPage() {
+/**
+ * 服用履歴ページ - ユーザーの薬剤服用記録を表示
+ * 日付別フィルタリング機能と服用完了ボタンを提供
+ */
+const DoseHistoryPage: React.FC = () => {
+  const { user } = useAuth();
+  const [records, setRecords] = useState<DoseRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState<DoseRow[]>([]);
-  const [toast, setToast] = useState<{ message: string; type?: "info" | "success" | "error" } | null>(null);
-
-  // pagination/search state
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [total, setTotal] = useState<number | null>(null);
-  const [search, setSearch] = useState("");
-  const [medNames, setMedNames] = useState<Record<string, string>>({});
-
-  const totalPages = useMemo(() => {
-    if (!total) return 1;
-    return Math.max(1, Math.ceil(total / pageSize));
-  }, [total, pageSize]);
-
-  // pageInput removed: pagination now uses the existing navigation buttons only
-
-  const timeSlotBadge = (val?: string | null) => {
-    const defaultBadge = { label: '-', bg: 'bg-gray-200', text: 'text-gray-700' };
-    if (!val) return defaultBadge;
-    const s = String(val);
-    // first check for explicit keywords
-    if (s.includes('就寝前')) return { label: '就寝前', bg: 'bg-indigo-600', text: 'text-white' };
-    if (s.includes('朝')) return { label: '朝', bg: 'bg-yellow-100', text: 'text-yellow-800' };
-    if (s.includes('昼')) return { label: '昼', bg: 'bg-sky-100', text: 'text-sky-800' };
-    if (s.includes('晩') || s.includes('夜')) return { label: '晩', bg: 'bg-gray-800', text: 'text-white' };
-
-    // fallback: try to parse as ISO datetime
-    try {
-      const d = new Date(s);
-      if (isNaN(d.getTime())) return defaultBadge;
-      const h = d.getHours(); // local hour
-      if (h >= 21 && h <= 23) return { label: '就寝前', bg: 'bg-indigo-600', text: 'text-white' };
-      if (h >= 5 && h <= 11) return { label: '朝', bg: 'bg-yellow-100', text: 'text-yellow-800' };
-      if (h >= 12 && h <= 16) return { label: '昼', bg: 'bg-sky-100', text: 'text-sky-800' };
-      return { label: '晩', bg: 'bg-gray-800', text: 'text-white' };
-    } catch (e) {
-      return defaultBadge;
-    }
-  };
+  const [error, setError] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      let query = supabase
-        .from("dose_history")
-        .select("id, user_id, medication_record_id, taken_at, note, created_at", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .range(from, to);
-
-      if (search.trim() !== "") {
-        // basic server-side filter on note column. Additional client filtering below.
-        query = query.ilike("note", `%${search}%`);
+    const fetchRecords = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
       }
 
-      const { data, error, count } = await query;
-      if (error) {
-        setToast({ message: "読み込みに失敗しました: " + error.message, type: "error" });
-        setRows([]);
-        setTotal(null);
-      } else {
-        const rows = (data as DoseRow[]) || [];
-        // fetch related medication_records in batch to avoid nested relation
-        const ids = Array.from(new Set(rows.map((r) => r.medication_record_id).filter(Boolean)));
-        let medMap: Record<string, any> = {};
-        if (ids.length > 0) {
-          const { data: meds } = await supabase.from('medication_records').select('id,dosage,usage,medication_id').in('id', ids as any[]);
-          if (meds) medMap = meds.reduce((acc: Record<string, any>, m: any) => { acc[String(m.id)] = m; return acc; }, {});
-        }
-        const merged = rows.map((r) => ({ ...r, medication_records: medMap[String(r.medication_record_id)] || null }));
-
-        // collect medication ids from medication_records and fetch medication names
-        const medicationIds = Array.from(new Set(merged.map((r) => r.medication_records?.medication_id).filter(Boolean)));
-        let nameMap: Record<string, string> = {};
-        if (medicationIds.length > 0) {
-          const { data: meds } = await supabase.from('medications').select('id,name').in('id', medicationIds as any[]);
-          if (meds) nameMap = meds.reduce((acc: Record<string, string>, m: any) => { acc[String(m.id)] = m.name || ''; return acc; }, {});
-        }
-
-        setRows(merged);
-        setMedNames(nameMap);
-        setTotal(count ?? rows.length);
+      try {
+        setLoading(true);
+        setError('');
+        const data = await doseRecordService.getUserDoseRecords(user.id, selectedDate);
+        setRecords(data);
+      } catch (err) {
+        console.error('服用記録の取得エラー:', err);
+        setError('服用記録の取得に失敗しました');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    load();
-  }, [page, pageSize, search]);
 
-  const handleDelete = async (id: number) => {
-    const { error } = await supabase.from("dose_history").delete().eq("id", id);
-    if (error) setToast({ message: "削除に失敗しました: " + error.message, type: "error" });
-    else {
-      setToast({ message: "削除しました", type: "success" });
-      // reload current page
-      const newRows = rows.filter((r) => r.id !== id);
-      setRows(newRows);
-      // If rows now empty and page > 1, go back one page to avoid empty view
-      if (newRows.length === 0 && page > 1) setPage(page - 1);
+    fetchRecords();
+  }, [user, selectedDate]);
+
+  const formatTime = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return '不明';
     }
   };
 
-  if (loading) return <div className="p-8">読み込み中...</div>;
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString('ja-JP');
+    } catch {
+      return '不明';
+    }
+  };
+
+  const handleMarkDoseTaken = async (recordId: string) => {
+    try {
+      await doseRecordService.markDoseTaken(recordId);
+      // 記録を更新
+      setRecords(prev =>
+        prev.map(r =>
+          r.id === recordId
+            ? { ...r, taken: true, actual_time: new Date().toISOString() }
+            : r
+        )
+      );
+    } catch (err) {
+      console.error('服用記録の更新エラー:', err);
+      setError('服用記録の更新に失敗しました');
+    }
+  };
+
+  // ローディング表示
+  if (loading) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">読み込み中...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">服薬履歴</h1>
+    <ProtectedRoute>
+      <div className="min-h-screen py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          
+          {/* ページヘッダー */}
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">服用履歴</h1>
+            <Link
+              href="/"
+              className="bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 font-medium"
+            >
+              ホーム
+            </Link>
+          </div>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="ノートで検索"
-            className="border px-3 py-2 rounded w-64"
-            aria-label="検索"
-          />
-          <select
-            value={pageSize}
-            onChange={(e) => {
-              setPageSize(Number(e.target.value));
-              setPage(1);
-            }}
-            className="border px-2 py-2 rounded"
-            aria-label="ページサイズ"
-          >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={20}>20</option>
-            <option value={50}>50</option>
-          </select>
-        </div>
+          {/* 日付選択 */}
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <div className="flex items-center gap-4">
+              <label htmlFor="date" className="font-medium text-gray-700">
+                日付を選択:
+              </label>
+              <input
+                type="date"
+                id="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
 
-        <div className="text-sm text-gray-600">合計: {total ?? 0} 件 / {totalPages} ページ</div>
-      </div>
+          {/* エラー表示 */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
 
-      {rows.length === 0 ? (
-        <div className="p-6 bg-white rounded shadow">該当する記録がありません。</div>
-      ) : (
-        <div className="overflow-x-auto bg-white rounded shadow">
-          <table className="min-w-full text-left">
-            <thead>
-              <tr className="border-b">
-                <th className="p-3">日付</th>
-                <th className="p-3">時間帯</th>
-                <th className="p-3">薬品名</th>
-                <th className="p-3">用量</th>
-                <th className="p-3">ノート</th>
-                <th className="p-3">アクション</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3 align-top">{(() => { try { return formatDate(new Date(r.taken_at ?? r.created_at), 'yyyy-MM-dd'); } catch { return r.taken_at ?? r.created_at; } })()}</td>
-                  <td className="p-3 align-top">
-                    {(() => {
-                      // Prefer the prescribed/use 'usage' string when determining time slot.
-                      const usageVal = (r as any).medication_records?.usage;
-                      const s = timeSlotBadge(usageVal ?? r.taken_at ?? r.created_at);
-                      return (
-                        <div className={`inline-block px-2 py-1 rounded text-sm ${s.bg} ${s.text}`}>{s.label}</div>
-                      );
-                    })()}
-                  </td>
-                  <td className="p-3 align-top">{medNames[String(r.medication_records?.medication_id)] ?? (r.medication_records?.medication_id ? String(r.medication_records.medication_id) : '-')}</td>
-                  <td className="p-3 align-top">{r.medication_records?.dosage ?? "-"} / {r.medication_records?.usage ?? "-"}</td>
-                  <td className="p-3 align-top">{r.note ?? "-"}</td>
-                  <td className="p-3 align-top">
-                    <div className="flex gap-2">
-                      <button onClick={() => handleDelete(r.id)} className="px-3 py-1 bg-red-600 text-white rounded">削除</button>
+          {/* 服用記録一覧 */}
+          {records.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <div className="text-gray-500 mb-4">
+                <svg
+                  className="mx-auto h-24 w-24 text-gray-300"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {formatDate(selectedDate)}の服用記録はありません
+              </h3>
+              <p className="text-gray-600">
+                この日の服用記録がまだ登録されていません
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {records.map((record) => (
+                <div
+                  key={record.id}
+                  className={`bg-white rounded-lg shadow p-6 ${
+                    record.taken ? 'border-l-4 border-green-500' : 'border-l-4 border-gray-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        {record.medication_record?.medication?.drug_name || '薬剤名不明'}
+                      </h3>
+                      <p className="text-gray-600 text-sm mb-1">
+                        予定時刻: {formatTime(record.scheduled_time)}
+                      </p>
+                      {record.actual_time && (
+                        <p className="text-gray-600 text-sm">
+                          実際の服用時刻: {formatTime(record.actual_time)}
+                        </p>
+                      )}
                     </div>
-                  </td>
-                </tr>
+                    <div className="text-right">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          record.taken
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {record.taken ? '服用済み' : '未服用'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">用量:</span>
+                      <p className="text-gray-600">
+                        {record.medication_record?.dosage_amount || 0}
+                        {record.medication_record?.dosage_unit || ''}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">処方医:</span>
+                      <p className="text-gray-600">
+                        {record.medication_record?.prescribed_by || '未記録'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">医療機関:</span>
+                      <p className="text-gray-600">
+                        {record.medication_record?.hospital_name || '未記録'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {record.notes && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                      <span className="font-medium text-gray-700">メモ:</span>
+                      <p className="text-gray-600 mt-1">{record.notes}</p>
+                    </div>
+                  )}
+
+                  {record.medication_record?.instructions && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
+                      <span className="font-medium text-blue-700">服用方法:</span>
+                      <p className="text-blue-600 mt-1">{record.medication_record.instructions}</p>
+                    </div>
+                  )}
+
+                  {!record.taken && (
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        onClick={() => handleMarkDoseTaken(record.id)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        服用完了
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setPage(1)} disabled={page === 1} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">最初へ</button>
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          >
-            前へ
-          </button>
-          <span className="text-sm">{page} / {totalPages}</span>
-          <button
-            onClick={() => setPage((p) => (totalPages ? Math.min(totalPages, p + 1) : p + 1))}
-            disabled={page >= totalPages}
-            className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
-          >
-            次へ
-          </button>
-          <button onClick={() => setPage(totalPages)} disabled={page === totalPages} className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50">最後へ</button>
-          {/* direct page input removed; use navigation buttons to change pages */}
-        </div>
-
-        <div className="text-sm text-gray-600">現在の件数: {rows.length} 件</div>
       </div>
-
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
+    </ProtectedRoute>
   );
-}
+};
+
+export default DoseHistoryPage;
