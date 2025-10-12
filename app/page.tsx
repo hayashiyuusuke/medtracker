@@ -7,7 +7,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
  * ホーム画面 - シンプルなタイトルと歓迎メッセージのみ表示
  * ナビゲーションはボトムナビゲーションバーで提供
  */
-function HomePage() {
+export default function HomePage() {
   const { user } = useAuth();
 
   return (
@@ -23,11 +23,11 @@ function HomePage() {
         {/* 歓迎メッセージ - ユーザーのメールアドレスを表示 */}
         <p className="text-lg text-gray-700 text-center">
           ようこそ、{user?.email || 'ゲスト'}さん
+          {/* ?. とは「オプショナルチェーン演算子」と呼ばれ、userがnullまたはundefinedの場合にundefinedを返し、エラーを防ぐために使用される。 */}
         </p>
-        
+
       </main>
     </ProtectedRoute>
   );
 }
 
-export default HomePage;

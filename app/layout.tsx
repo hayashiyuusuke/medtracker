@@ -1,6 +1,4 @@
-/**
- * 🏗️ Next.js App Router - ルートレイアウトファイル
- * 
+/*
  * 【このファイルの重要な役割】
  * - アプリケーション全体の骨組みを定義
  * - 全ページで共通する要素（フォント、メタデータ、プロバイダー）を設定
@@ -12,9 +10,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 import BottomNav from '../components/BottomNav';
-import Header from '../components/Header'; // 🆕 今作成したHeaderコンポーネント
+import Header from '../components/Header'; 
 
-/**
+/*
  * Geistフォントの設定
  * 
  * 🧠 [問い] なぜ変数名を 'geistSans' にするのでしょうか？　→ フォントの種類を明示するため
@@ -30,7 +28,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/**
+/*
  * アプリケーションのメタデータ設定
  * 
  * 🧠 [問い] このmetadataオブジェクトはどこで使用されるのでしょうか？
@@ -46,14 +44,15 @@ export const metadata: Metadata = {
   authors: [{ name: "MedTracker Development Team" }],
 };
 
-/**
+/*
  * ルートレイアウトコンポーネント
  * 
  * @param children - 各ページのコンテンツが挿入される部分
  * @returns アプリケーション全体の基本レイアウト
  * 
- * 🧠 [問い] なぜこの関数が 'default export' されているのでしょうか？
- * Next.js App Routerの規約について調べてみてください。
+ *　→ Next.js App Routerでは、以下のファイルは必ず default export する必要がある。
+ * layout.tsx, page.tsx, loading.tsx, error.tsx
+ * 理由は、Next.jsがこれらのファイルを特別に扱い、アプリケーションのルーティングとレンダリングを管理するためです。
  */
 export default function RootLayout({
   children,
@@ -71,8 +70,10 @@ export default function RootLayout({
       */}
       <body className="antialiased min-h-screen bg-gray-50 flex flex-col">
         {/* 
-          🧠 [問い] 'antialiased' クラスは何をしているのでしょうか？
-          また、'min-h-screen flex flex-col' の組み合わせの効果は？
+          🧠 [問い] 'antialiased' クラスは何をしているのでしょうか？　
+          → 文字のアンチエイリアス処理を行い、滑らかに表示する。文字のアンチエイリアス処理とは、隣接するピクセルの色を調整して、文字のエッジを滑らかに見せる技術です。
+          また、'min-h-screen flex flex-col' の組み合わせの効果は？　
+          → 画面全体の高さを確保し、フレックスボックスで縦方向に要素を配置する。
         */}
         
         <AuthProvider>
@@ -92,8 +93,10 @@ export default function RootLayout({
           */}
           <main className="flex-1 container mx-auto px-4 py-8">
             {/* 
-              🧠 [問い] 'flex-1' クラスの役割は何でしょうか？
-              ヘッダーとフッターの高さを除いた残り全体を占めるのはなぜ？
+              🧠 [問い] 'flex-1' クラスの役割は何でしょうか？→
+              画面の残りのスペースを占有するため
+              つまり、ヘッダーとフッターの高さを除いた残り全体を占めるのはなぜ？→
+              フレックスボックスの特性を利用して、利用可能なスペースを自動的に調整するため。
             */}
             {children}
           </main>
@@ -106,7 +109,7 @@ export default function RootLayout({
   );
 }
 
-/**
+/*
  * 🎓 [学習ポイント] このレイアウトファイルの重要な設計概念
  * 
  * 1. **レイアウトパターン** - Header + Main(flex-1) + Footer の3分割
@@ -116,7 +119,6 @@ export default function RootLayout({
  * 5. **コンポーネント分離** - Header, BottomNavを別ファイルで管理
  * 
  * 🧠 [次のステップ] 
- * - なぜ 'children' という名前なのか
  * - AuthProviderの内部実装
  * - TailwindCSSのコンテナーシステム
  */
