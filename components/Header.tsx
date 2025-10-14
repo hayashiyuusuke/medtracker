@@ -23,7 +23,7 @@ export default function Header() {
 
   return (
     <header 
-      className="bg-green-600 text-white shadow-lg"
+      className="sticky top-0 z-50 bg-[#cee6c1] text-white shadow-sm"
       role="banner" // アクセシビリティ: スクリーンリーダー用
     >
       {/* 
@@ -44,10 +44,7 @@ export default function Header() {
               🧠 [問い] なぜここで<h1>タグを使っているのでしょうか？
               <div>や<span>ではダメでしょうか？SEO観点で考えてみてください。
             */}
-            <h1 className="text-xl font-bold">
-              <span className="text-2xl mr-2" role="img" aria-label="薬のアイコン">
-                💊
-              </span>
+            <h1 className="text-xl  text-gray-700">
               MedTracker
             </h1>
             <span className="text-green-200 text-sm hidden sm:inline">
@@ -91,11 +88,11 @@ export default function Header() {
               今回は簡単な実装にしますが、本格的なアプリでは開閉機能が必要
             */}
             <button 
-              className="md:hidden p-2 rounded-md hover:bg-green-700 transition-colors"
+              className="md:hidden p-2 rounded-md hover:bg-[#66904f] shadow-sm transition-colors"
               aria-label="メニューを開く"
               aria-expanded="false" // アクセシビリティ: メニューの開閉状態
             >
-              <span className="text-xl">☰</span>
+              <span className="text-xl text-black">☰</span>
             </button>
           </nav>
         </div>

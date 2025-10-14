@@ -212,23 +212,17 @@ function NewMedicationPage() {
           
           {/* ページヘッダー */}
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">新しい処方記録</h1>
-            <Link
-              href="/medications"
-              className="bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 font-medium"
-            >
-              戻る
-            </Link>
+            <h1 className="text-3xl text-gray-700">新しい処方記録</h1>
           </div>
 
           {/* QRスキャンボタン */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">QRコードから入力</h2>
+            <h2 className="text-xl text-gray-700 mb-4">QRコードから入力</h2>
             <button
               onClick={() => setShowQRReader(true)}
-              className="w-full bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 font-medium"
+              className="w-full bg-[#96b786] text-black px-6 py-3 rounded-md hover:bg-[#66904f] font-medium active:scale-95"
             >
-              📱 お薬手帳のQRコードをスキャン
+              QRコードをスキャン
             </button>
           </div>
 
@@ -242,7 +236,7 @@ function NewMedicationPage() {
 
           {/* 薬剤検索 */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">薬剤選択</h2>
+            <h2 className="text-xl text-gray-900 mb-4">薬剤選択</h2>
             <MedicationSearch 
               onSelect={setSelectedMedication}
             />
@@ -255,7 +249,7 @@ function NewMedicationPage() {
 
           {/* 手動入力フォーム */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">処方詳細</h2>
+            <h2 className="text-xl text-gray-900 mb-4">処方詳細</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

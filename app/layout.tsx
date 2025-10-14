@@ -68,7 +68,7 @@ export default function RootLayout({
         - lang="ja": 日本語サイトであることを宣言（アクセシビリティ、SEO）
         - className: Geistフォントのcss変数をグローバルに適用
       */}
-      <body className="antialiased min-h-screen bg-gray-50 flex flex-col">
+      <body className="antialiased min-h-screen bg-[#cee6c1] flex flex-col">
         {/* 
           🧠 [問い] 'antialiased' クラスは何をしているのでしょうか？　
           → 文字のアンチエイリアス処理を行い、滑らかに表示する。文字のアンチエイリアス処理とは、隣接するピクセルの色を調整して、文字のエッジを滑らかに見せる技術です。
@@ -91,7 +91,7 @@ export default function RootLayout({
             📄 [メインコンテンツエリア] 
             各ページのコンテンツがここに表示される
           */}
-          <main className="flex-1 container mx-auto px-4 py-8">
+          <main className="flex-1 container mx-auto px-4 py-8 bg-[#cee6c1]">
             {/* 
               🧠 [問い] 'flex-1' クラスの役割は何でしょうか？→
               画面の残りのスペースを占有するため

@@ -16,15 +16,10 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 w-full bg-white shadow-t-lg border-t border-gray-200 z-50">
       <div className="flex justify-around items-center h-16 px-4">
-        
         {/* 処方一覧リンク */}
         <Link
           href="/medications"
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors ${
-            isActive('/medications')
-              ? 'text-blue-600 bg-blue-50'
-              : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-          }`}
+          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors text-black hover:bg-[#66904f] active:scale-95`}
         >
           {/* 処方箋アイコン */}
           <svg
@@ -46,11 +41,7 @@ export default function BottomNav() {
         {/* 処方登録リンク（メイン機能として強調） */}
         <Link
           href="/medications/new"
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors ${
-            isActive('/medications/new')
-              ? 'text-white bg-blue-600'
-              : 'text-white bg-blue-500 hover:bg-blue-600'
-          }`}
+          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors text-black hover:bg-[#66904f] active:scale-95`}
         >
           {/* 追加アイコン */}
           <svg
@@ -72,11 +63,7 @@ export default function BottomNav() {
         {/* 服用履歴リンク */}
         <Link
           href="/history"
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors ${
-            isActive('/history')
-              ? 'text-blue-600 bg-blue-50'
-              : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-          }`}
+          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors text-black hover:bg-[#66904f] active:scale-95`}
         >
           {/* 履歴アイコン */}
           <svg

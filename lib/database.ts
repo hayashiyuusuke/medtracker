@@ -10,7 +10,7 @@ import type {
 // MedicationService　この関数は、「薬品名で検索して返す」
 export const medicationService = {
   async search(query: string): Promise<Medication[]> {
-    const { data, error } = await supabase
+    const { data, error } = await supabase /* ここの data は medications テーブルから取得したすべてのプロパティ */
       .from('medications')/* medicationsというテーブルの */
       .select('*')/* 全部を対象とする */
       .or(`drug_name.ilike.%${query}%,generic_name.ilike.%${query}%`)/* 商品名または一般名で部分一致検索(ilike)。％はワイルドカードといい、前後に任意の文字列が入ることを示す。 */
@@ -205,7 +205,7 @@ export const doseRecordService = { /* 「服用記録」を管理する役割 */
   },
 
   async getUserDoseRecords(userId: string, date?: string): Promise<DoseRecord[]> { /* 服用記録を取得する関数 */
-    let query = supabase
+    let query = supabase/* 後に変更/更新するためにletで定義しておく */
       .from('dose_records')
       .select(`
         *,
@@ -216,15 +216,15 @@ export const doseRecordService = { /* 「服用記録」を管理する役割 */
       `)
       .eq('user_id', userId); /* user_idはデータベースの変数名。userIdはJavaScript/TypeScriptの変数名。user_idで統一できないのは、JavaScript/TypeScriptの変数名はキャメルケースで書くのが一般的だから */
 
-    if (date) {
+    if (date) {/* 日付が指定されている場合 */
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
       query = query
-        .gte('scheduled_time', startOfDay.toISOString())
-        .lte('scheduled_time', endOfDay.toISOString());
+        .gte('scheduled_time', startOfDay.toISOString())/* .gte()	以上 */
+        .lte('scheduled_time', endOfDay.toISOString());/* .lte() 以下 */
     }
 
     const { data, error } = await query.order('scheduled_time');
@@ -237,22 +237,28 @@ export const doseRecordService = { /* 「服用記録」を管理する役割 */
     return data || [];
   },
 
-  async getTodaysDoses(userId: string): Promise<DoseRecord[]> {
-    const today = new Date().toISOString().split('T')[0];
-    return this.getUserDoseRecords(userId, today);
+  async getTodaysDoses(userId: string): Promise<DoseRecord[]> {/* 今日の服用記録を取得する関数 */
+    const today = new Date().toISOString().split('T')[0];/* Tで分割して、[0]で日付部分を取得 */
+    return this.getUserDoseRecords(userId, today);/* 上記2行で今日の服用記録を取得して、後の処理は関数getUserDoseRecordsに任せる。thisはdoseRecordService内の関数である〜〜。という意味。（ショートカット関数） */
   }
 };
+/* 👆doseRecordServiceのポイント( createDoseRecord, markDoseTaken, getUserDoseRecords, getTodaysDoses)の４つの関数をまとめている
+ * 1.ネストしたJOIN: 薬品情報まで一気に取得
+ * 2.任意パラメータ: ? で柔軟性を持たせる
+ * 3.動的クエリ: 条件によってフィルターを追加
+ * 4.ショートカット関数: よく使うパターンを簡潔に
+ */
 
-// User Profile Service
-export const userProfileService = {
-  async getUserProfile(userId: string): Promise<UserProfile | null> {
+
+export const userProfileService = {/* ユーザーのプロフィール情報を管理するサービス */
+  async getUserProfile(userId: string): Promise<UserProfile | null> {/* プロフィールを取得する関数 */
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+    if (error && error.code !== 'PGRST116') { // PGRST116 = "データが見つかりません" エラー。新規ユーザーをエラーとして扱わないため
       console.error('Error fetching user profile:', error);
       throw error;
     }
@@ -261,9 +267,16 @@ export const userProfileService = {
   },
 
   async createOrUpdateUserProfile(userId: string, profileData: Omit<UserProfile, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<UserProfile | null> {
+    /* 作成または更新する関数。 
+     * Omit<T, K> とは? TypeScriptの組み込み型であり、"特定のプロパティを除外する"という意味。
+     * T から K に指定したプロパティを除外した新しい型を作成する。
+     * ここでは UserProfile 型から id, user_id, created_at, updated_at プロパティを除外した型を表す。
+     * 理由: これらは自動生成または管理されるため、ユーザーが直接提供する必要はないし、提供すべきでもない。
+     * userId は別途引数として受け取るため、profileData に含める必要はない。
+     */
     const { data, error } = await supabase
       .from('user_profiles')
-      .upsert({
+      .upsert({/*  update + insert */
         user_id: userId,
         ...profileData
       })

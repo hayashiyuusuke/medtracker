@@ -7,88 +7,67 @@ import { medicationRecordService } from '../../lib/database';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import type { MedicationRecord } from '../../types/database';
 
-function MedicationsPage() {
+function MedicationsPage() {/* コンポーネント宣言としての役割 */
   const { user } = useAuth();
   const [records, setRecords] = useState<MedicationRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);/* 初期値がtrueなのはページが開かれた瞬間からローディングを開始するから */
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  useEffect(() => {/* useEffect とはコンポーネントが表示された時に実行。ここでは[user] = user が変わったら再実行 */
     const fetchRecords = async () => {
-      if (!user) return;
+      if (!user) return;/* user がいない場合は何もしない。 user がログイン状態だと useEffect が実行される */
 
       try {
-        setLoading(true);
-        const data = await medicationRecordService.getUserMedicationRecords(user.id);
-        setRecords(data);
+        setLoading(true); // 1. ローディング開始
+        const data = await medicationRecordService.getUserMedicationRecords(user.id);/* 特定のユーザーの全ての処方記録を取得するための関数 */
+        setRecords(data); // 2. データを State に保存
       } catch (err) {
-        console.error('処方記録の取得エラー:', err);
-        setError('処方記録の取得に失敗しました');
+        console.error('処方記録の取得エラー:', err);/* 第１引数が'処方記録の取得エラー:'で第２引数がerr。errの中身はJavaScript/ライブラリが自動で生成する */
+        setError('処方記録の取得に失敗しました'); // 3. エラーメッセージを設定
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecords();
-  }, [user]);
+    fetchRecords();/* 定義した関数を即座に呼び出し */
+  }, [user]);/* 依存配列 */
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ja-JP');
-  };
+  };/* ヘルパー関数: よく使う処理を関数にまとめて、コードを再利用可能で読みやすくするためのもの */
 
-  if (loading) {
-    return (
-      <ProtectedRoute>
+  return (
+    <ProtectedRoute> 
+      {loading ? (/* 三項演算子 👉 {条件 ? 真の場合 : 偽の場合} */
+        /* loading が true の間は、くるくる回るローディングアニメーションを表示 */
         <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-      </ProtectedRoute>
-    );
-  }
-
-  return (
-    <ProtectedRoute>
-      <div className="min-h-screen py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">処方記録</h1>
-            <div className="flex gap-4">
-              <Link
-                href="/medications/qr-test"
-                className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 font-medium"
-              >
-                QRコードテスト
-              </Link>
-              <Link
-                href="/medications/new"
-                className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 font-medium"
-              >
-                新しい処方記録
-              </Link>
-              <Link
-                href="/"
-                className="bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 font-medium"
-              >
-                ホーム
-              </Link>
+      ) : (
+        /* loading が false になったら、メインコンテンツを表示 */
+        <div className="min-h-screen py-8 bg-[#cee6c1]">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-3xl  text-gray-700">処方記録</h1>
+              <div className="flex gap-4">
             </div>
           </div>
 
-          {error && (
+          {error && (/* error が存在する（真）なら、エラーメッセージを表示する。errorが存在しなければ何もしない。 左側 && 右側 👉 左側が falsy → 左側を返す。左側が truthy → 右側を返す。*/
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-700">{error}</p>
             </div>
           )}
 
           {records.length === 0 ? (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <div className="text-gray-500 mb-4">
+            <div className="bg-white rounded-lg shadow p-8 text-center">{/* rounded = 角丸,lg = large（大きめ）,p = padding */}
+              <div className="text-gray-500 mb-4">{/* mb = margin-bottom */}
                 <svg
-                  className="mx-auto h-24 w-24 text-gray-300"
-                  fill="none"
+                  className="mx-auto h-24 w-24 text-gray-300"/* m = margin, x = 左右 */
+                  fill="none"/* 塗りつぶしなし */
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                >
+                >{/* svgとは Scalable Vector Graphics の略で、XMLベースのベクター画像フォーマットです。 */}
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -97,15 +76,12 @@ function MedicationsPage() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-gray-700 mb-2">
                 処方記録がありません
               </h3>
-              <p className="text-gray-600 mb-6">
-                最初の処方記録を追加してみましょう
-              </p>
               <Link
                 href="/medications/new"
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="inline-flex items-center px-6 py-3 bg-[#96b786] text-black rounded-md hover:bg-[#66904f] shadow-lg active:scale-95"
               >
                 処方記録を追加
               </Link>
@@ -198,6 +174,7 @@ function MedicationsPage() {
           )}
         </div>
       </div>
+      )}
     </ProtectedRoute>
   );
 }
