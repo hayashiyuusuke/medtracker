@@ -46,21 +46,21 @@ function NewMedicationPage() {
   const handleQRResult = (qrDataString: string) => {
     console.log('=== 統一QRコード処理開始 ===');
     console.log('生データ:', qrDataString);
-    console.log('データ長:', qrDataString.length);
-    
-    if (!qrDataString || qrDataString.trim() === '') {
+    console.log('データ長:', qrDataString.length);/* 短すぎたり長すぎたりする場合のチェックをするため、文字数を取得する。 */
+
+    if (!qrDataString || qrDataString.trim() === '') { /* trim = 文字列の前後の空白を削除 */
       console.log('❌ 空のQRコードデータ');
       setError('QRコードが読み取れませんでした。もう一度お試しください。');
       setShowQRReader(false);
-      return;
+      return;/* 後続処理を中断するために必要 */
     }
 
     // データを正規化
     const normalizedData = qrDataString.trim();
-    console.log('正規化後のデータ:', normalizedData.substring(0, 100) + '...');
-    
+    console.log('正規化後のデータ:', normalizedData.substring(0, 100) + '...');/* コンソールが埋まって見づらくなるため、100文字までを表示 */
+
     // デバッグ情報を出力
-    debugQrData(normalizedData);
+    debugQrData(normalizedData);/* QRコードの詳細情報を開発者ツールに出力（別ファイルの関数） */
     
     try {
       // 🎯 新しい統一パーサーを使用

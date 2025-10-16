@@ -9,7 +9,7 @@ import type { MedicationRecord } from '../../types/database';
 
 function MedicationsPage() {/* コンポーネント宣言としての役割 */
   const { user } = useAuth();
-  const [records, setRecords] = useState<MedicationRecord[]>([]);
+  const [records, setRecords] = useState<MedicationRecord[]>([]);/*.  useState を<MedicationRecord[]>という型で指定して、初期値は([])で空の配列とする。 */
   const [loading, setLoading] = useState(true);/* 初期値がtrueなのはページが開かれた瞬間からローディングを開始するから */
   const [error, setError] = useState('');
 
@@ -21,7 +21,7 @@ function MedicationsPage() {/* コンポーネント宣言としての役割 */
         setLoading(true); // 1. ローディング開始
         const data = await medicationRecordService.getUserMedicationRecords(user.id);/* 特定のユーザーの全ての処方記録を取得するための関数 */
         setRecords(data); // 2. データを State に保存
-      } catch (err) {
+      } catch (err) { /* err(eとかerrorとか自分で命名)　はJavaScriptが自動で生成するエラーオブジェクト。 */
         console.error('処方記録の取得エラー:', err);/* 第１引数が'処方記録の取得エラー:'で第２引数がerr。errの中身はJavaScript/ライブラリが自動で生成する */
         setError('処方記録の取得に失敗しました'); // 3. エラーメッセージを設定
       } finally {
@@ -66,13 +66,13 @@ function MedicationsPage() {/* コンポーネント宣言としての役割 */
                   className="mx-auto h-24 w-24 text-gray-300"/* m = margin, x = 左右 */
                   fill="none"/* 塗りつぶしなし */
                   viewBox="0 0 24 24"
-                  stroke="currentColor"
+                  stroke="currentColor"/* SVGの線の色を、親要素のテキスト色と同じにするという指定 */
                 >{/* svgとは Scalable Vector Graphics の略で、XMLベースのベクター画像フォーマットです。 */}
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    strokeLinecap="round"/* 線の端を丸くして、優しい見た目に */
+                    strokeLinejoin="round"/* 線の接続部分を丸くして、優しい見た目に */
+                    strokeWidth={1}/* 線の太さを指定 */
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/* SVGの描画コマンドを定義。これはコピペで良さそう（理解不要） */
                   />
                 </svg>
               </div>
@@ -87,10 +87,10 @@ function MedicationsPage() {/* コンポーネント宣言としての役割 */
               </Link>
             </div>
           ) : (
-            <div className="space-y-4">
-              {records.map((record) => (
+            <div className="space-y-4">{/* つまり、margin-top: 1rem（１６px）; */}
+              {records.map((record) => ( /*  map()で配列をループして各要素をHTMLに変換し、一つ一つをrecordという引数として受け取る。 */
                 <div
-                  key={record.id}
+                  key={record.id}/* Reactが各要素を識別するための固有ID */
                   className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow"
                 >
                   <div className="flex justify-between items-start mb-4">
