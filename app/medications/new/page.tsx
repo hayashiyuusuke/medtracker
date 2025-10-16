@@ -11,7 +11,7 @@ import SimpleQRReader from '../../../components/SimpleQRReader';
 import MultipleMedicationsModal from '../../../components/MultipleMedicationsModal';
 import { processQrCode, type MedicationData, debugQrData } from '../../../lib/unifiedQrParser';
 import MedicationSearch from '../../../components/MedicationSearch';
-import type { Medication, MedicationRecordFormData } from '../../../types/database';
+import type { Medication, MedicationRecordFormData, QrMedicationData } from '../../../types/database';
 
 function NewMedicationPage() {
   const { user } = useAuth();
@@ -21,7 +21,7 @@ function NewMedicationPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMedicationsModal, setShowMedicationsModal] = useState(false);
-  const [detectedMedications, setDetectedMedications] = useState<any[]>([]);
+  const [detectedMedications, setDetectedMedications] = useState<QrMedicationData[]>([]);
   
   // デバッグ用: showQRReaderの変更を監視
   useEffect(() => {
@@ -138,11 +138,11 @@ function NewMedicationPage() {
   };
 
   // 複数薬剤から選択された薬剤をフォームに設定
-  const handleSelectMedication = (medication: any) => {
+  const handleSelectMedication = (medication: QrMedicationData) => {
     console.log('選択された薬剤:', medication);
     
     const newFormData = {
-      prescription_date: new Date().toISOString().split('T')[0], // 現在の日付
+      prescription_date: new Date().toISOString().split('T')[0], /* new Date()で現在の日付を取得し、ISO形式の文字列に変換してから、T以前と以降の二つのオブジェクトに分けて、[0]で一つ目のオブジェクトを取得 */
       prescribed_by: '',
       hospital_name: '',
       pharmacy_name: '',

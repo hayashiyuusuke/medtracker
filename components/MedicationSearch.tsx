@@ -22,7 +22,8 @@ export default function MedicationSearch({
 
   useEffect(() => {
     const searchMedications = async () => {
-      if (query.length < 2) {
+      // 最小文字数を1文字に変更（1文字でも検索可能に）
+      if (query.length < 1) {
         setResults([]);
         setShowResults(false);
         return;
@@ -101,6 +102,9 @@ export default function MedicationSearch({
         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
           <div className="px-4 py-3 text-gray-500 text-center">
             「{query}」に一致する薬剤が見つかりませんでした
+          </div>
+          <div className="px-4 pb-3 text-xs text-gray-500 text-center">
+            データベースに登録されている薬剤から検索しています
           </div>
         </div>
       )}

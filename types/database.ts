@@ -6,6 +6,8 @@ export interface Medication {
   strength: string;
   dosage_form: string;
   route_of_administration: string;
+  yj_code?: string;  // YJコード（医薬品コード）
+  price?: number;    // 薬価
   created_at?: string;
   updated_at?: string;
 }
@@ -82,6 +84,15 @@ export interface QRCodeData {
     total_amount?: number;
     instructions?: string;
   }>;
+}
+
+// QRコードから検出された薬剤データの型
+export interface QrMedicationData {
+  name: string;
+  quantity: string;
+  unit: string;
+  dosage: string;
+  days: string;
 }
 
 export interface UserProfile {
