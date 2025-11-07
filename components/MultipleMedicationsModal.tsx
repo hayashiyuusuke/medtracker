@@ -1,20 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-
-interface Medication {
-  name: string;
-  quantity: string;
-  unit: string;
-  dosage: string;
-  days: string;
-}
+import type { QrMedicationData } from '../types/database';
 
 interface MultipleMedicationsModalProps {
-  medications: Medication[];
+  medications: QrMedicationData[];  // 共通型を使用
   isOpen: boolean;
   onClose: () => void;
-  onSelectMedication: (medication: Medication) => void;
+  onSelectMedication: (medication: QrMedicationData) => void;  // 共通型を使用
 }
 
 export default function MultipleMedicationsModal({

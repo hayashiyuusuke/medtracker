@@ -7,10 +7,11 @@ interface SimpleQRReaderProps {
   onResult: (data: string) => void;
   onError?: (error: Error) => void;
   className?: string;
+  autoStart?: boolean;  // 自動起動オプションを追加
 }
 
-export default function SimpleQRReader({ onResult, onError, className }: SimpleQRReaderProps) {
-  const [isScanning, setIsScanning] = useState(false);
+export default function SimpleQRReader({ onResult, onError, className, autoStart = false }: SimpleQRReaderProps) {
+  const [isScanning, setIsScanning] = useState(autoStart);  // autoStartがtrueなら最初からスキャン開始
   const [error, setError] = useState<string>('');
 
   const handleScan = (result: any) => {
@@ -68,24 +69,27 @@ export default function SimpleQRReader({ onResult, onError, className }: SimpleQ
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="flex gap-2">
-        <button
-          onClick={startScanning}
-          disabled={isScanning}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {isScanning ? 'スキャン中...' : 'QRコードをスキャン'}
-        </button>
-        
-        {isScanning && (
+      {/* autoStartがfalseの場合のみボタンを表示 */}
+      {!autoStart && (
+        <div className="flex gap-2">
           <button
-            onClick={stopScanning}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            onClick={startScanning}
+            disabled={isScanning}
+            className="px-4 py-2 bg-blue-500 text-gray-900 rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            停止
+            {isScanning ? 'スキャン中...' : 'QRコードをスキャン'}
           </button>
-        )}
-      </div>
+          
+          {isScanning && (
+            <button
+              onClick={stopScanning}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              停止
+            </button>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">

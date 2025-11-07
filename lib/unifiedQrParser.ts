@@ -36,7 +36,7 @@ export interface Medication {
   dosage: string;    // 用法・用量
   quantity?: string; // 数量
   unit?: string;     // 単位
-  days?: number;     // 処方日数
+  days?: string;     // 処方日数 (文字列型に統一)
 }
 
 /**
@@ -200,7 +200,7 @@ function parseJahisBase64Format(qrData: string): MedicationData | null {
           dosage: '1日3回 食後',
           quantity: '21',
           unit: '錠',
-          days: 7
+          days: '7'  // 文字列型に統一
         }
       ],
       rawData: qrData
@@ -344,7 +344,7 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
       dosage?: string;
       quantity?: string;
       unit?: string;
-      days?: number;
+      days?: string;  // 文字列型に統一
     }
     
     let currentMedication: WorkingMedication | null = null;
@@ -412,11 +412,11 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
             currentMedication.dosage = dosageInfo;
           }
           
-          // 日数の抽出
+          // 日数の抽出（文字列として保持）
           if (daysInfo) {
             const daysMatch = daysInfo.match(/(\d+)/);
             if (daysMatch) {
-              currentMedication.days = parseInt(daysMatch[1]);
+              currentMedication.days = daysMatch[1];  // 文字列として保持
             }
           }
           

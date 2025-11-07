@@ -44,19 +44,6 @@ export interface MedicationRecordFormData {
   instructions: string;
 }
 
-export interface MedicationRecordFormData {
-  prescription_date: string;
-  prescribed_by: string;
-  hospital_name: string;
-  dosage_amount: number;
-  dosage_unit: string;
-  frequency_per_day: number;
-  duration_days: number;
-  total_amount: number;
-  instructions: string;
-  pharmacy_name: string;
-}
-
 export interface DoseRecord {
   id: string;
   user_id: string;

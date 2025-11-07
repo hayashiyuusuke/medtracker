@@ -17,7 +17,7 @@ function NewMedicationPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [showQRReader, setShowQRReader] = useState(false);
-  const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);
+  const [selectedMedication, setSelectedMedication] = useState<Medication | null>(null);/* TypeScriptの型付きState */
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMedicationsModal, setShowMedicationsModal] = useState(false);
@@ -29,7 +29,7 @@ function NewMedicationPage() {
   }, [showQRReader]);
   
   // フォームデータ
-  const [formData, setFormData] = useState<MedicationRecordFormData>({
+  const [formData, setFormData] = useState<MedicationRecordFormData>({/* オブジェクト型のState管理 */
     prescription_date: new Date().toISOString().split('T')[0],
     prescribed_by: '',
     hospital_name: '',
@@ -57,14 +57,14 @@ function NewMedicationPage() {
 
     // データを正規化
     const normalizedData = qrDataString.trim();
-    console.log('正規化後のデータ:', normalizedData.substring(0, 100) + '...');/* コンソールが埋まって見づらくなるため、100文字までを表示 */
+    console.log('正規化後のデータ:', normalizedData.substring(0, 100) + '...');/* コンソールが埋まって見づらくなるため、100文字までを表示。*/
 
     // デバッグ情報を出力
     debugQrData(normalizedData);/* QRコードの詳細情報を開発者ツールに出力（別ファイルの関数） */
     
     try {
       // 🎯 新しい統一パーサーを使用
-      const medicationData = processQrCode(normalizedData);
+      const medicationData = processQrCode(normalizedData);/* processQrCode() は unifiedQrParser.ts のメイン関数 */
       
       if (medicationData && medicationData.medications.length > 0) {
         console.log('🎯 統一パーサーで解析成功:', medicationData);
@@ -75,22 +75,37 @@ function NewMedicationPage() {
           console.log('薬剤選択モーダルを表示します');
           
           // MedicationData形式をMultipleMedicationsModalで使用する形式に変換
-          const modalMedications = medicationData.medications.map((med, index) => ({
+          // 型が統一されたため、変換がシンプルになりました
+          const modalMedications = medicationData.medications.map((med) => ({
             name: med.name,
             quantity: med.quantity || '1',
             unit: med.unit || '錠',
             dosage: med.dosage,
-            days: med.days?.toString() || '1'
+            days: med.days || '1'  // 型統一により .toString() が不要に!
           }));
           
-          setDetectedMedications(modalMedications);
-          setShowMedicationsModal(true);
-          setShowQRReader(false);
+          setDetectedMedications(modalMedications);/* 新しい薬剤データを State に保存 */
+          setShowMedicationsModal(true);/* 複数薬剤の場合に表示される画面に切り替え */
+          setShowQRReader(false);/* QRリーダーを閉じる */
           return;
         }
 
         // 単一薬剤の場合、直接フォームに設定
         const medication = medicationData.medications[0];
+        
+        // 服用回数を解析（「毎食後」→3回など日本語テキストから数値に変換する役割の関数）
+        const getFrequency = (dosageText: string): number => {/* 戻り値の型は number */
+          if (dosageText.match(/毎食/)) return 3;
+          if (dosageText.match(/朝.*昼.*晩|朝.*昼.*夕|朝.*昼.*夜/)) return 3;
+          if (dosageText.match(/朝.*[晩夕夜]/)) return 2;
+          // 単独服用タイミング → 1回
+          if (dosageText.match(/^(朝食後|昼食後|夕食後|[寝ね]る前|就寝前|起床時|食間)(?!.*[昼夕晩夜朝])/)) return 1;/* (?!...) = 否定先読み　.* = 任意の文字が0文字以上 👉 これらの文字が含まれていればfalse */
+          const match = dosageText.match(/(\d+)\s*回/);/* １日3回だとしたら「１」「日」「３」にそれぞれ解釈していき 数字＋回 に当てはまるまで処理する */
+          if (match) return parseFloat(match[1]);/*  parseFloat とは文字列を浮動小数点数（小数を含む数値）に変換する */ /* （）キャプチャグループによりインデックスは二つとなる。 */
+          const firstNumber = dosageText.match(/\d+/)?.[0];/* どのパターンにも当てはまらない場合に、最初に見つかった数字を使う」最後の手段 */ /* ?（オプショナルチェーン）は左の対象があるかないかを判別して、あれば右側を返す、なければundefinedを返す */
+          return firstNumber ? parseFloat(firstNumber) : 1;/* 三項演算子　○ ? △ : ◻︎ で ○ があれば △ 返す。なければ ◻︎ を返す。 */
+        };
+        
         const newFormData = {
           prescription_date: medicationData.prescribedDate,
           prescribed_by: '', // 統一パーサーには処方医情報がないため空文字
@@ -99,11 +114,11 @@ function NewMedicationPage() {
           medication_name: medication.name,
           dosage_amount: parseFloat(medication.quantity || '1'),
           dosage_unit: medication.unit || '錠',
-          frequency_per_day: parseFloat(medication.dosage.match(/\d+/)?.[0] || '1'),
-          duration_days: medication.days || 1,
+          frequency_per_day: getFrequency(medication.dosage), /* 新しい解析関数を使用 */
+          duration_days: parseInt(medication.days || '1'),  // 文字列→数値に変換
           total_amount: (parseFloat(medication.quantity || '1')) * 
-                       (parseFloat(medication.dosage.match(/\d+/)?.[0] || '1')) * 
-                       (medication.days || 1),
+                       getFrequency(medication.dosage) * 
+                       parseInt(medication.days || '1'),  // 文字列→数値に変換
           instructions: `${medication.name} - ${medication.dosage} (${medicationData.sourceFormat}形式から自動入力)`,
         };
 
@@ -137,6 +152,41 @@ function NewMedicationPage() {
     }
   };
 
+  // 服用回数を解析する関数 ifのみの書き方（早期リターン方式 または ガード節）= 一つ目のifから順番にreturnを返すかどうかを繰り返していく動き
+  const parseFrequency = (dosageText: string): number => {
+    // パターン1: 「毎食後」「毎食」→ 3回
+    if (dosageText.match(/毎食/)) return 3;/* 文字列.match(正規表現)で正規表現パターンを使って文字列を検索し、一致した結果を返す */
+
+    // パターン2: 「朝昼晩」「朝・昼・晩」→ 3回
+    if (dosageText.match(/朝.*昼.*晩|朝.*昼.*夕|朝.*昼.*夜/)) return 3;
+    
+    // パターン3: 「朝晩」「朝夕」→ 2回
+    if (dosageText.match(/朝.*[晩夕夜]/)) return 2;
+    
+    // パターン4: 特定の単独服用タイミング → 1回
+    // 「朝食後」「昼食後」「夕食後」「寝る前」「ねる前」など
+    if (dosageText.match(/^(朝食後|昼食後|夕食後|[寝ね]る前|就寝前|起床時|食間)(?!.*[昼夕晩夜朝])/)) return 1;
+    
+    // パターン5: 「1日〇回」のような明示的な数字
+    const match = dosageText.match(/(\d+)\s*回/);
+    if (match) return parseFloat(match[1]);
+/* ( )	キャプチャグループ	カッコ内の一致部分を個別に取り出せる
+　　\d	数字1文字	0-9のいずれか
+　　+	　1回以上の繰り返し	1桁以上の数字（1, 23, 456など）
+　　\s	空白文字	スペース、タブなど
+　　*	　0回以上の繰り返し	スペースがあってもなくても良い
+　　回	文字「回」	そのまま「回」という文字
+ */
+/* parseFloat = 文字列を数値に変換 */
+
+    // パターン6: 先頭の数字（フォールバック）= パターン1〜5で一致しなかった場合の最後の手段として、「とにかく最初に見つかった数字を使う」という処理
+    const firstNumber = dosageText.match(/\d+/)?.[0];
+    if (firstNumber) return parseFloat(firstNumber);
+
+    // デフォルト: 1回
+    return 1;
+  };
+
   // 複数薬剤から選択された薬剤をフォームに設定
   const handleSelectMedication = (medication: QrMedicationData) => {
     console.log('選択された薬剤:', medication);
@@ -147,32 +197,32 @@ function NewMedicationPage() {
       hospital_name: '',
       pharmacy_name: '',
       medication_name: medication.name,
-      dosage_amount: parseFloat(medication.quantity) || 1,
+      dosage_amount: parseFloat(medication.quantity) || 1,/* parseFloat は、JavaScriptの組み込み関数で、文字列を浮動小数点数（小数を含む数値）に変換する */
       dosage_unit: medication.unit || '錠',
-      frequency_per_day: parseFloat(medication.dosage.match(/\d+/)?.[0] || '1'),
-      duration_days: parseFloat(medication.days) || 1,
+      frequency_per_day: parseFrequency(medication.dosage), /* 新しい解析関数を使用 */
+      duration_days: parseInt(medication.days) || 1,  // 文字列→数値に変換 (parseFloatからparseIntに変更)
       total_amount: (parseFloat(medication.quantity) || 1) * 
-                   (parseFloat(medication.dosage.match(/\d+/)?.[0] || '1')) * 
-                   (parseFloat(medication.days) || 1),
+                   parseFrequency(medication.dosage) * 
+                   (parseInt(medication.days) || 1),  // 文字列→数値に変換
       instructions: `${medication.name} - ${medication.dosage}`,
     };
 
     console.log('📝 選択された薬剤をフォームデータに変換:', newFormData);
 
     // フォームに反映
-    setFormData((prev: MedicationRecordFormData) => ({
+    setFormData((prev: MedicationRecordFormData) => ({ /* prev = "previous"（前の、以前の）の略 */
       ...prev,
       ...newFormData
     }));
 
     // 成功メッセージ
     setError('');
-    console.log('✅ 選択された薬剤情報をフォームに設定しました');
+    console.log('✅ 選択された薬剤情報をフォームに設定しました');/* 成功した時に前段階でエラーが出ていた場合に、その表示されているエラーメッセージを消すために必要 */
   };
 
   // 処方記録の保存
-  const handleSubmit = async () => {
-    if (!user) {
+  const handleSubmit = async () => {/* フォームに入力された処方記録をデータベースに保存する関数 */
+    if (!user) {/* 二つの if文を使ったガード節 */
       setError('ユーザー情報が取得できませんでした');
       return;
     }
@@ -188,7 +238,7 @@ function NewMedicationPage() {
     try {
       const recordData = {
         ...formData,
-        medication_id: selectedMedication.id
+        medication_id: selectedMedication.id/* formData + medication_id（選択された薬剤ID）= recordData */
       };
 
       const result = await medicationRecordService.createMedicationRecord(user.id, recordData);
@@ -227,10 +277,10 @@ function NewMedicationPage() {
           </div>
 
           {/* エラー表示 */}
-          {error && (
+          {error && (/* 条件付きレンダリング: */
             <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
               <h3 className="text-red-800 font-medium mb-2">❌ エラー</h3>
-              <p className="text-red-700">{error}</p>
+              <p className="text-red-700">{error}</p>{/* このerrorがあればtrue👉表示 */}
             </div>
           )}
 
@@ -238,7 +288,7 @@ function NewMedicationPage() {
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h2 className="text-xl text-gray-900 mb-4">薬剤選択</h2>
             <MedicationSearch 
-              onSelect={setSelectedMedication}
+              onSelect={setSelectedMedication}/* MedicationSearchコンポーネントであり、選択するとsetSelectedMedicationが呼ばれる */
             />
             {selectedMedication && (
               <div className="mt-4 p-4 bg-blue-50 rounded-md">
@@ -259,8 +309,8 @@ function NewMedicationPage() {
                 <input
                   type="date"
                   value={formData.prescription_date}
-                  onChange={(e) => setFormData(prev => ({ ...prev, prescription_date: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFormData(prev => ({ ...prev, prescription_date: e.target.value }))}/* まず prev（現在のMedicationRecordFormData）をスプレッド構文で取得し、その中の prescription_date のみを e.target.value に更新 */
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -273,7 +323,7 @@ function NewMedicationPage() {
                   value={formData.hospital_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, hospital_name: e.target.value }))}
                   placeholder="病院名を入力"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -286,7 +336,7 @@ function NewMedicationPage() {
                   value={formData.prescribed_by}
                   onChange={(e) => setFormData(prev => ({ ...prev, prescribed_by: e.target.value }))}
                   placeholder="処方医名を入力"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -299,7 +349,7 @@ function NewMedicationPage() {
                   value={formData.pharmacy_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, pharmacy_name: e.target.value }))}
                   placeholder="薬局名を入力"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -312,17 +362,17 @@ function NewMedicationPage() {
                     type="number"
                     value={formData.dosage_amount}
                     onChange={(e) => setFormData(prev => ({ ...prev, dosage_amount: parseFloat(e.target.value) || 0 }))}
-                    min="0"
-                    step="0.1"
-                    className="w-20 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                    min="0.5"
+                    step="0.5"
+                    className="text-gray-900 w-20 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />{/* rounded-l-md 意味: 左側の角を丸くする focus:outline-none: フォーカス時のアウトラインを非表示 focus:ring-2: フォーカス時のリングを表示 focus:ring-blue-500: リングの色を青にする */}
                   <input
                     type="text"
                     value={formData.dosage_unit}
                     onChange={(e) => setFormData(prev => ({ ...prev, dosage_unit: e.target.value }))}
                     placeholder="錠"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                    className="text-gray-900 flex-1 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />{/* flex-1 意味: 残りのスペースを全て使う(伸縮する)  */}
                 </div>
               </div>
 
@@ -335,7 +385,7 @@ function NewMedicationPage() {
                   value={formData.frequency_per_day}
                   onChange={(e) => setFormData(prev => ({ ...prev, frequency_per_day: parseInt(e.target.value) || 0 }))}
                   min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -348,7 +398,7 @@ function NewMedicationPage() {
                   value={formData.duration_days}
                   onChange={(e) => setFormData(prev => ({ ...prev, duration_days: parseInt(e.target.value) || 0 }))}
                   min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -361,7 +411,7 @@ function NewMedicationPage() {
                   value={formData.total_amount}
                   onChange={(e) => setFormData(prev => ({ ...prev, total_amount: parseInt(e.target.value) || 0 }))}
                   min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -375,7 +425,7 @@ function NewMedicationPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, instructions: e.target.value }))}
                 placeholder="服用方法や備考を入力"
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -384,7 +434,7 @@ function NewMedicationPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <button
               onClick={handleSubmit}
-              disabled={loading || !selectedMedication}
+              disabled={loading || !selectedMedication}/* loading の時か selectedMedication がない時に disabled （disable はHTMLの属性）*/
               className="w-full bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? '保存中...' : '処方記録を保存'}
@@ -400,48 +450,44 @@ function NewMedicationPage() {
               right: 0,
               bottom: 0,
               zIndex: 999999,
-              backgroundColor: 'rgba(0,0,0,0.8)',
+              backgroundColor: 'rgba(0,0,0,0.9)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <div style={{
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                padding: '20px',
-                maxWidth: '500px',
-                width: '90%'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '20px'
-                }}>
-                  <h3 style={{ margin: 0, fontSize: '18px' }}>QRコードスキャン</h3>
-                  <button
-                    onClick={() => {
-                      console.log('QRリーダーを閉じます');
-                      setShowQRReader(false);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '20px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <SimpleQRReader
-                  onResult={handleQRResult}
-                  onError={(error) => {
-                    console.error('QRスキャンエラー:', error);
-                    setError(error.message);
-                  }}
-                />
-              </div>
+              {/* 閉じるボタン(右上) */}
+              <button
+                onClick={() => {
+                  console.log('QRリーダーを閉じます');
+                  setShowQRReader(false);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  background: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  zIndex: 1000000
+                }}
+              >
+                ✕
+              </button>
+              
+              {/* QRリーダー(全画面) */}
+              <SimpleQRReader
+                autoStart={true}/* 自動起動を有効にする */
+                onResult={handleQRResult}
+                onError={(error) => {
+                  console.error('QRスキャンエラー:', error);
+                  setError(error.message);
+                }}/* これら３つのプロパティは SimpleQRReader.tsx に定義されている */
+              />
             </div>
           )}
 
