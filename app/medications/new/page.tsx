@@ -93,19 +93,6 @@ function NewMedicationPage() {
         // 単一薬剤の場合、直接フォームに設定
         const medication = medicationData.medications[0];
         
-        // 服用回数を解析（「毎食後」→3回など日本語テキストから数値に変換する役割の関数）
-        const getFrequency = (dosageText: string): number => {/* 戻り値の型は number */
-          if (dosageText.match(/毎食/)) return 3;
-          if (dosageText.match(/朝.*昼.*晩|朝.*昼.*夕|朝.*昼.*夜/)) return 3;
-          if (dosageText.match(/朝.*[晩夕夜]/)) return 2;
-          // 単独服用タイミング → 1回
-          if (dosageText.match(/^(朝食後|昼食後|夕食後|[寝ね]る前|就寝前|起床時|食間)(?!.*[昼夕晩夜朝])/)) return 1;/* (?!...) = 否定先読み　.* = 任意の文字が0文字以上 👉 これらの文字が含まれていればfalse */
-          const match = dosageText.match(/(\d+)\s*回/);/* １日3回だとしたら「１」「日」「３」にそれぞれ解釈していき 数字＋回 に当てはまるまで処理する */
-          if (match) return parseFloat(match[1]);/*  parseFloat とは文字列を浮動小数点数（小数を含む数値）に変換する */ /* （）キャプチャグループによりインデックスは二つとなる。 */
-          const firstNumber = dosageText.match(/\d+/)?.[0];/* どのパターンにも当てはまらない場合に、最初に見つかった数字を使う」最後の手段 */ /* ?（オプショナルチェーン）は左の対象があるかないかを判別して、あれば右側を返す、なければundefinedを返す */
-          return firstNumber ? parseFloat(firstNumber) : 1;/* 三項演算子　○ ? △ : ◻︎ で ○ があれば △ 返す。なければ ◻︎ を返す。 */
-        };
-        
         const newFormData = {
           prescription_date: medicationData.prescribedDate,
           prescribed_by: '', // 統一パーサーには処方医情報がないため空文字
@@ -114,10 +101,10 @@ function NewMedicationPage() {
           medication_name: medication.name,
           dosage_amount: parseFloat(medication.quantity || '1'),
           dosage_unit: medication.unit || '錠',
-          frequency_per_day: getFrequency(medication.dosage), /* 新しい解析関数を使用 */
+          frequency_per_day: parseFrequency(medication.dosage), // parseFrequency を使用（重複していた getFrequency を削除）
           duration_days: parseInt(medication.days || '1'),  // 文字列→数値に変換
           total_amount: (parseFloat(medication.quantity || '1')) * 
-                       getFrequency(medication.dosage) * 
+                       parseFrequency(medication.dosage) * 
                        parseInt(medication.days || '1'),  // 文字列→数値に変換
           instructions: `${medication.name} - ${medication.dosage} (${medicationData.sourceFormat}形式から自動入力)`,
         };
