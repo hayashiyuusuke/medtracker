@@ -31,7 +31,7 @@
 /**
  * 統一薬剤情報インターフェース
  */
-export interface Medication {
+export interface Medication {/* name と dosage は必須のインターフェイス */
   name: string;      // 薬剤名
   dosage: string;    // 用法・用量
   quantity?: string; // 数量
@@ -43,18 +43,24 @@ export interface Medication {
  * 統一データ形式 - 全てのパーサーがこの形式を返す
  */
 export interface MedicationData {
-  sourceFormat: 'JAHIS' | 'NON_JAHIS_CSV';  // データ形式の識別
+  sourceFormat: 'JAHIS' | 'NON_JAHIS_CSV';  // データ形式の識別 この二つのうちどちらかしか認めないという型＝ユニオン型（AまたはBのように、複数の方のうちいずれか一つであることを許可する型定義の方法。）
+  /* interface　はユニオン型が使えないが、ここではプロパティの型としてユニオン型が使われているため使用可能。 */
   prescribedDate: string;                    // 処方日 (YYYY-MM-DD)
   hospitalName: string;                      // 医療機関名
   patientName: string;                       // 患者氏名
-  medications: Medication[];                 // 薬剤リスト
+  medications: Medication[];                 // 薬剤リスト（複数薬剤を認める）
   rawData?: string;                         // 元データ（デバッグ用）
 }
+/* 
+ *interface = オブジェクトの形を定義するための仕組み
+ *type (型エイリアス) = あらゆる型に名前をつけるための仕組み
+*/
+
 
 /**
  * QRコード形式判別結果
  */
-export type QrFormat = 'JAHIS' | 'NON_JAHIS_CSV' | 'UNKNOWN';
+export type QrFormat = 'JAHIS' | 'NON_JAHIS_CSV' | 'UNKNOWN';/* 型エイリアス（エイリアス＝別名、偽名） */
 
 /**
  * 解析エラー情報
@@ -77,10 +83,11 @@ export interface ParseError {
  * @param qrData QRコードから読み取った生データ
  * @returns 判別されたデータ形式
  */
+/* この2行はJSDocコメント と呼ばれるもので、関数の説明を記述するための特殊なコメント形式。なくてもいいがあった方が親切でわかりやすい。 param = パラメーター qrData = 関数の引数名 returns = 戻り値の説明 */
 export function detectQrFormat(qrData: string): QrFormat {
   console.log('🔍 QR形式判別開始（改善版）:', qrData.substring(0, 50) + '...');
   
-  // 空データチェック
+  // 空データチェック　ガード節
   if (!qrData || qrData.trim() === '') {
     console.log('❌ 空のデータ');
     return 'UNKNOWN';
@@ -92,8 +99,8 @@ export function detectQrFormat(qrData: string): QrFormat {
    * Rule 1 (Priority: HIGH)
    * JAHIS形式の判別 - 'JAHIS|1|' で始まるかを確認
    */
-  if (trimmedData.startsWith('JAHIS|1|')) {
-    console.log('✅ JAHIS標準形式として判別（JAHIS|1|パターン）');
+  if (trimmedData.startsWith('JAHIS|1|')) {/* .startsWith(): 文字列が指定の文字で始まるかを判定するJavaScriptのメソッド */
+    console.log('✅ JAHIS標準形式として判別（JAHIS|1|パターン）');/* JAHISが定めたお薬手帳QRコードの標準規格では、データが必ず JAHIS|1| で始まるルールになっている */
     return 'JAHIS';
   }
   
@@ -104,7 +111,7 @@ export function detectQrFormat(qrData: string): QrFormat {
   }
   
   // JAHISバイナリ形式（特殊文字区切り）
-  if (trimmedData.includes('\x1C') && trimmedData.includes('\x1D')) {
+  if (trimmedData.includes('\x1C') && trimmedData.includes('\x1D')) {/* ASCII制御文字 \x1C と \x1D が含まれていれば true */
     console.log('✅ JAHISバイナリ形式として判別');
     return 'JAHIS';
   }
@@ -115,8 +122,8 @@ export function detectQrFormat(qrData: string): QrFormat {
    * より普遍的な特徴（カンマの存在）で判定し、将来のパターンにも対応
    */
   if (trimmedData.includes(',')) {
-    console.log('✅ 非JAHISカンマ区切り形式として判別（カンマ存在パターン）');
-    console.log('📊 カンマ数:', (trimmedData.match(/,/g) || []).length);
+    console.log('✅ 非JAHISカンマ区切り形式として判別（カンマ存在パターン）');/* QRコードのデータにカンマ(,)が含まれていれば、非JAHIS形式(カンマ区切り形式)と判定している */
+    console.log('📊 カンマ数:', (trimmedData.match(/,/g) || []).length);/* .match()	文字列から正規表現パターンに一致する部分を検索 g = グローバルフラグ（全て見つける） ||[] = 左辺がnullの場合から配列を返す */
     console.log('📊 先頭20文字:', trimmedData.substring(0, 20));
     return 'NON_JAHIS_CSV';
   }
@@ -128,10 +135,10 @@ export function detectQrFormat(qrData: string): QrFormat {
   console.log('⚠️ 未知の形式');
   console.log('📊 データ特徴:');
   console.log('   - 長さ:', trimmedData.length);
-  console.log('   - 先頭文字:', trimmedData.charAt(0));
-  console.log('   - カンマ含有:', trimmedData.includes(','));
+  console.log('   - 先頭文字:', trimmedData.charAt(0));/* .charAt(位置) メソッド = 指定位置の1文字を取得 */
+  console.log('   - カンマ含有:', trimmedData.includes(','));/* .includes() メソッド = 戻り値: true または false (boolean型) */
   console.log('   - JAHIS含有:', trimmedData.includes('JAHIS'));
-  return 'UNKNOWN';
+  return 'UNKNOWN';/* 関数を終了し、'UNKNOWN' を返す */
 }
 
 /**
@@ -145,16 +152,16 @@ export function detectQrFormat(qrData: string): QrFormat {
  * @param qrData JAHIS形式のQRデータ
  * @returns 統一形式のMedicationData
  */
-export function parseJahisData(qrData: string): MedicationData | null {
+export function parseJahisData(qrData: string): MedicationData | null {/* qrData = 引数 MedicationData | null = 戻り値 */
   console.log('🔬 JAHIS解析開始');
   
   try {
-    // JAHIS Base64形式の処理
+    // JAHIS Base64形式の処理/* Base64形式とは、バイナリデータを64種類のASCII文字で表現する方式。バイナリを通信で壊れないテキストに変えるために使用される */
     if (qrData.startsWith('JAHIS|')) {
       return parseJahisBase64Format(qrData);
     }
-    
-    // JAHISバイナリ形式の処理
+
+    // JAHISバイナリ形式の処理/* バイナリデータとは、特定の形式で表現されたデータのことです。 */
     if (qrData.includes('\x1C')) {
       return parseJahisBinaryFormat(qrData);
     }
@@ -172,13 +179,13 @@ export function parseJahisData(qrData: string): MedicationData | null {
  * JAHIS Base64形式の解析
  * 注：実際の実装では、信頼できるJAHISライブラリを使用することを推奨
  */
-function parseJahisBase64Format(qrData: string): MedicationData | null {
+function parseJahisBase64Format(qrData: string): MedicationData | null {/* export ではないのは、内部でのみ使用するため。他のファイルに export するのは detectQrFormat() , parseJahisData() , parseNonJahisCsvData() , processQrCode() のみ */
   console.log('📄 JAHIS Base64形式解析');
   
   try {
     // "JAHIS|1|base64data" 形式の解析
-    const parts = qrData.split('|');
-    if (parts.length < 3) {
+    const parts = qrData.split('|');/* .split('|') = パイプ記号（|）で文字列を分割 */
+    if (parts.length < 3) {/* JAHIS標準規格では、データが必ず3つの部分に分かれているため、3つ未満のパーツの場合エラーを投げる */
       throw new Error('Invalid JAHIS format');
     }
     
@@ -188,7 +195,7 @@ function parseJahisBase64Format(qrData: string): MedicationData | null {
     // ここでは簡略化した処理を示す
     console.log('Base64データサイズ:', base64Data.length);
     
-    // モックデータとして基本情報を返す
+    // モックデータとして基本情報を返す/* モックデータとは本物そっくりのダミーデータ */
     return {
       sourceFormat: 'JAHIS',
       prescribedDate: new Date().toISOString().split('T')[0],
@@ -215,11 +222,11 @@ function parseJahisBase64Format(qrData: string): MedicationData | null {
 /**
  * JAHISバイナリ形式の解析
  */
-function parseJahisBinaryFormat(qrData: string): MedicationData | null {
+function parseJahisBinaryFormat(qrData: string): MedicationData | null {/* JAHISバイナリ形式（特殊文字で区切られた形式）のQRコードを解析する関数 */
   console.log('🔢 JAHISバイナリ形式解析');
   
   try {
-    const sections = qrData.split('\x1C');
+    const sections = qrData.split('\x1C');/* '\x1C' = データを区切るための特殊文字 */
     const medications: Medication[] = [];
     
     let hospitalName = 'JAHIS医療機関';
@@ -227,8 +234,8 @@ function parseJahisBinaryFormat(qrData: string): MedicationData | null {
     let prescribedDate = new Date().toISOString().split('T')[0];
     
     // セクション解析（簡略版）
-    sections.forEach((section, index) => {
-      console.log(`セクション ${index}:`, section.substring(0, 50));
+    sections.forEach((section, index) => {/* forEach = 配列の各要素に対して処理を実行。 section: 現在の要素の値。 index: 現在の要素の位置（0から始まる)。 */
+      console.log(`セクション ${index}:`, section.substring(0, 50));/* 先頭50文字だけ取得 */
       
       // 薬剤情報の抽出（実際の実装では詳細な仕様に従う）
       if (section.includes('薬') || section.includes('Drug')) {
@@ -243,10 +250,10 @@ function parseJahisBinaryFormat(qrData: string): MedicationData | null {
     
     return {
       sourceFormat: 'JAHIS',
-      prescribedDate,
+      prescribedDate,/* 短縮記法（変数名とプロパティ名が同じ場合） */
       hospitalName,
       patientName,
-      medications: medications.length > 0 ? medications : [
+      medications: medications.length > 0 ? medications : [/* 条件 ? 真の場合 : 偽の場合 */
         {
           name: 'JAHISバイナリ解析薬剤',
           dosage: '用法指示',
