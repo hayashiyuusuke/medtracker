@@ -1,75 +1,16 @@
 /**
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- * 🔄 統一QRコード解析モジュール - 開発者向け重要事項
- * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- * 
- * 【⚠️ 重要：既存コードの置き換えについて】
- * このモジュールは、複数のQRコード形式を統一的に処理するための最新実装です。
- * 既存の以下のファイルを完全に置き換えることを強く推奨します：
- * 
- * 🗂️ 削除対象ファイル：
- * - lib/qrParser.ts (旧SimpleJahisParser)
- * - lib/jahisStandardParser.ts
- * - lib/simpleJahisParser.ts (既に削除済み)
- * - その他のQR解析関連ファイル
- * 
- * 📦 NPMパッケージのクリーンアップ：
- * 以前にJAHIS関連のパッケージをインストールした場合は、以下のコマンドで削除してください：
- * ```bash
- * npm uninstall jahis-qr-decoder @jahis/qr-parser jahis-prescription-parser
- * npm uninstall zlib pako buffer
- * ```
- * 
- * 🔧 移行手順：
- * 1. 既存のパーサーインポート文を全て削除
- * 2. `import { processQrCode } from '../lib/unifiedQrParser'` に置き換え
- * 3. パーサー呼び出しを `processQrCode(qrData)` に統一
- * 
+ * 🔄 統一QRコード解析モジュール
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 
-/**
- * 統一薬剤情報インターフェース
- */
-export interface Medication {/* name と dosage は必須のインターフェイス */
-  name: string;      // 薬剤名
-  dosage: string;    // 用法・用量
-  quantity?: string; // 数量
-  unit?: string;     // 単位
-  days?: string;     // 処方日数 (文字列型に統一)
-}
-
-/**
- * 統一データ形式 - 全てのパーサーがこの形式を返す
- */
-export interface MedicationData {
-  sourceFormat: 'JAHIS' | 'NON_JAHIS_CSV';  // データ形式の識別 この二つのうちどちらかしか認めないという型＝ユニオン型（AまたはBのように、複数の方のうちいずれか一つであることを許可する型定義の方法。）
-  /* interface　はユニオン型が使えないが、ここではプロパティの型としてユニオン型が使われているため使用可能。 */
-  prescribedDate: string;                    // 処方日 (YYYY-MM-DD)
-  hospitalName: string;                      // 医療機関名
-  patientName: string;                       // 患者氏名
-  medications: Medication[];                 // 薬剤リスト（複数薬剤を認める）
-  rawData?: string;                         // 元データ（デバッグ用）
-}
-/* 
- *interface = オブジェクトの形を定義するための仕組み
- *type (型エイリアス) = あらゆる型に名前をつけるための仕組み
-*/
-
-
-/**
- * QRコード形式判別結果
- */
-export type QrFormat = 'JAHIS' | 'NON_JAHIS_CSV' | 'UNKNOWN';/* 型エイリアス（エイリアス＝別名、偽名） */
-
-/**
- * 解析エラー情報
- */
-export interface ParseError {
-  code: string;
-  message: string;
-  details?: any;
-}
+// 型定義のインポート（types/database.ts から一元管理）
+import type {
+  ParsedMedication,
+  MedicationData,
+  QrFormat,
+  ParseError
+} from '../types/database';
 
 /**
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -78,8 +19,6 @@ export interface ParseError {
  */
 
 /**
- * QRコードデータの形式を自動判別（改善版）
- * より柔軟で堅牢な判別ロジックを採用
  * @param qrData QRコードから読み取った生データ
  * @returns 判別されたデータ形式
  */
@@ -227,7 +166,7 @@ function parseJahisBinaryFormat(qrData: string): MedicationData | null {/* JAHIS
   
   try {
     const sections = qrData.split('\x1C');/* '\x1C' = データを区切るための特殊文字 */
-    const medications: Medication[] = [];
+    const medications: ParsedMedication[] = [];
     
     let hospitalName = 'JAHIS医療機関';
     let patientName = 'JAHIS患者';
@@ -343,7 +282,7 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
      */
     console.log('=== Step 3: レコード解析 ===');
     
-    const medications: Medication[] = [];
+    const medications: ParsedMedication[] = [];
     
     // 作業用の薬剤情報型を定義
     interface WorkingMedication {

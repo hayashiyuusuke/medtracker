@@ -82,6 +82,35 @@ export interface QrMedicationData {
   days: string;
 }
 
+// QRコード解析結果の薬剤情報型（unifiedQrParser用）
+export interface ParsedMedication {
+  name: string;       // 薬剤名
+  dosage: string;     // 用法・用量
+  quantity?: string;  // 数量
+  unit?: string;      // 単位
+  days?: string;      // 処方日数
+}
+
+// QRコード解析結果の統一データ形式
+export interface MedicationData {
+  sourceFormat: 'JAHIS' | 'NON_JAHIS_CSV';  // データ形式の識別
+  prescribedDate: string;                    // 処方日 (YYYY-MM-DD)
+  hospitalName: string;                      // 医療機関名
+  patientName: string;                       // 患者氏名
+  medications: ParsedMedication[];           // 薬剤リスト
+  rawData?: string;                         // 元データ（デバッグ用）
+}
+
+// QRコード形式判別結果
+export type QrFormat = 'JAHIS' | 'NON_JAHIS_CSV' | 'UNKNOWN';
+
+// 解析エラー情報
+export interface ParseError {
+  code: string;
+  message: string;
+  details?: any;
+}
+
 export interface UserProfile {
   id: string;
   user_id: string;

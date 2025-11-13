@@ -9,9 +9,9 @@ import { supabase } from '../../../lib/supabaseClient';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import SimpleQRReader from '../../../components/SimpleQRReader';
 import MultipleMedicationsModal from '../../../components/MultipleMedicationsModal';
-import { processQrCode, type MedicationData, debugQrData } from '../../../lib/unifiedQrParser';
+import { processQrCode, debugQrData } from '../../../lib/unifiedQrParser';
 import MedicationSearch from '../../../components/MedicationSearch';
-import type { Medication, MedicationRecordFormData, QrMedicationData } from '../../../types/database';
+import type { Medication, MedicationRecordFormData, QrMedicationData, MedicationData } from '../../../types/database';
 
 function NewMedicationPage() {
   const { user } = useAuth();
