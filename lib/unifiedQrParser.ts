@@ -166,11 +166,10 @@ function parseJahisBinaryFormat(qrData: string): MedicationData | null {/* JAHIS
   
   try {
     const sections = qrData.split('\x1C');/* '\x1C' = データを区切るための特殊文字 */
-    const medications: ParsedMedication[] = [];
-    
-    let hospitalName = 'JAHIS医療機関';
-    let patientName = 'JAHIS患者';
-    let prescribedDate = new Date().toISOString().split('T')[0];
+    const medications: ParsedMedication[] = [];  
+    const hospitalName = 'JAHIS医療機関';
+    const patientName = 'JAHIS患者';
+    const prescribedDate = new Date().toISOString().split('T')[0];
     
     // セクション解析（簡略版）
     sections.forEach((section, index) => {/* forEach = 配列の各要素に対して処理を実行。 section: 現在の要素の値。 index: 現在の要素の位置（0から始まる)。 */
@@ -220,28 +219,28 @@ function parseJahisBinaryFormat(qrData: string): MedicationData | null {/* JAHIS
  * レコード構造を正しく認識する2段階アプローチ
  * @param qrData カンマ区切り形式のQRデータ
  * @returns 統一形式のMedicationData
- */
+ * 関数ごとにデータの状態・意味が異なるため、それぞれにJSDocを書く */
 export function parseNonJahisCsvData(qrData: string): MedicationData | null {
   console.log('📊 非JAHISカンマ区切り解析開始（新ロジック）');
   console.log('生データ:', qrData.substring(0, 200) + '...');
   
   try {
     /**
-     * Step 1: レコードへの分割
-     * \r\n や改行文字でまず分割し、その後 201, や 301, でレコードを識別
+     * Step 1: レコードへの分割　\r\n や改行文字でまず分割し、その後 201, や 301, でレコードを識別
      */
     console.log('=== Step 1: レコード分割 ===');
     
     // 改行文字で分割（\r\n, \n, \r に対応）
     let records = qrData.split(/\r\n|\r|\n/);
     
-    // 改行がない場合は、201, や 301, パターンで分割を試行
+    // 改行がない場合は、201, や 301, パターンで分割を試行（改行がないQRコードも存在する。その場合、全データが1つの要素になってしまう）
     if (records.length === 1) {
       console.log('改行文字なし、パターンマッチで分割を試行');
       // 201, や 301, の前で分割（先頭は除く）
-      const recordPattern = /(?=(?:201|301),)/g;
+      const recordPattern = /(?=(?:201|301),)/g;/* (?=pattern) = 先読みアサーション👉「この位置の直後にpatternがあるか確認」(?:) = 非キャプチャグループ👉グループ化だけして記憶はしない。速い、効率的。 */
+      /* 日本の標準規格で定められているレコードタイプ👉薬の情報（201）と飲み方（301） */
       const rawSplit = qrData.split(recordPattern);
-      records = rawSplit.filter(record => record.trim().length > 0);
+      records = rawSplit.filter(record => record.trim().length > 0);/* .filter() = 条件を満たす要素のみ残す トリムして文字数が０文字以上のrecord要素を返す */
     }
     
     console.log('分割されたレコード数:', records.length);
@@ -254,17 +253,20 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
      */
     console.log('=== Step 2: ヘッダー解析 ===');
     
-    let prescribedDate = new Date().toISOString().split('T')[0];
-    let headerInfo = '';
+    let prescribedDate = new Date().toISOString().split('T')[0];/* もしQRコードから処方日が抽出できなかった場合のデフォルト値（今日の日付）として使用 */
+    let headerInfo = '';/* 初期値が空文字の変数 */
     
-    // 最初のレコードがヘッダー情報の可能性
+    // 最初のレコードがヘッダー情報の可能性 処方日や医療機関情報などのヘッダーが先頭にあり、その後に薬剤レコード（201, 301）が続く場合があるため
     const firstRecord = records[0];
-    if (firstRecord && !firstRecord.trim().startsWith('201') && !firstRecord.trim().startsWith('301')) {
+    if (firstRecord && !firstRecord.trim().startsWith('201') && !firstRecord.trim().startsWith('301')) {/* 「201」や「301」で始まらない場合のみ、ヘッダーとして処理する。 */
       headerInfo = firstRecord;
       console.log('ヘッダー情報:', headerInfo);
       
       // 処方日の抽出（数字のみ、または数字+英字パターン）
       const dateMatch = headerInfo.match(/(\d{8,}[A-Z]?\d*)/);
+      /* 8桁以上の数字 = \d{8,} 
+       * オプションで1文字の大文字アルファベット = [A-Z]? 
+       * 0文字以上の数字 = \d* */
       if (dateMatch) {
         const dateStr = dateMatch[1].replace(/[A-Z]/g, ''); // 英字を除去
         if (dateStr.length >= 8) {
@@ -274,7 +276,7 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
           prescribedDate = `${year}-${month}-${day}`;
           console.log('抽出された処方日:', prescribedDate);
         }
-      }
+      }/* return があるとこの後の薬剤レコードの解析がスキップされるため、return は不要。 */
     }
 
     /**
@@ -284,85 +286,63 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
     
     const medications: ParsedMedication[] = [];
     
-    // 作業用の薬剤情報型を定義
-    interface WorkingMedication {
-      name?: string;
+    interface WorkingMedication { // 作業用の薬剤情報型を定義
+      name: string;  // 必須に変更（型安全強化）
       dosage?: string;
       quantity?: string;
       unit?: string;
       days?: string;  // 文字列型に統一
-    }
-    
-    let currentMedication: WorkingMedication | null = null;
-    
+    }/* 薬剤情報を一時的に保持・構築するための「作業用」型定義。最終的な出力型（ParsedMedication）とは異なり、解析途中で不完全なデータを扱える柔軟な構造を提供。 */
+
+    const medicationMap = new Map<number, WorkingMedication>();/* Map とはキーと値のペアを保持するコレクションで、薬剤情報をインデックスで管理するために使用。ここでは201と301を同じインデックスでリンクするために機能している。Map の特徴として、キーで直接アクセスできて同じインデックスのレコードが複数あっても、上書きして最新の情報を保持。 */
+
     records.forEach((record, index) => {
       const trimmedRecord = record.trim();
-      if (!trimmedRecord) return;
+      if (!trimmedRecord) return;/* 早期リターン　forEachスキップし、以下の処理に移る */
       
       console.log(`--- レコード ${index} 解析: ${trimmedRecord.substring(0, 100)} ---`);
       
       const parts = trimmedRecord.split(',');
-      const recordType = parts[0]?.trim();
+      const recordType = parts[0]?.trim();/* オプショナルチェーン = nullやundefinedの場合にエラーを防ぐための構文 */
       
-      if (recordType === '201') {
-        /**
-         * 201レコード: 薬剤基本情報
-         * フォーマット: 201,インデックス,薬剤名,数量,単位,コード,フラグ...
-         */
+      if (recordType === '201') { /*201レコード: 薬剤基本情報　フォーマット: 201,インデックス,薬剤名,数量,単位,コード,フラグ...*/
         console.log('🔬 201レコード（薬剤情報）を解析');
         
-        const medicationIndex = parts[1]?.trim();
-        const medicationName = parts[2]?.trim();
+        const medicationIndex = parseInt(parts[1]?.trim() || '0');/* parseFloat（小数）とは異なり、parseIntは小数点以下をすべて切り捨て */
+        const medicationName = parts[2]?.trim() || '';/* 空文字にすることで、下の処理でスキップする設計 */
         const quantity = parts[3]?.trim();
         const unit = parts[4]?.trim();
         const medicationCode = parts[5]?.trim();
-        
-        if (medicationName) {
-          // 前の薬剤が完了していれば配列に追加
-          if (currentMedication && (currentMedication as any).name) {
-            medications.push({
-              name: (currentMedication as any).name,
-              dosage: (currentMedication as any).dosage || '用法不明',
-              quantity: (currentMedication as any).quantity || '',
-              unit: (currentMedication as any).unit || '',
-              days: (currentMedication as any).days
-            });
-          }
-          
-          // 新しい薬剤オブジェクトを開始
-          currentMedication = {
+
+        if (medicationName.trim()) {/* ここで空文字なら処理をスキップし、無効なレコードを保存しない設計 */
+          medicationMap.set(medicationIndex, {
             name: medicationName,
             quantity: quantity || '',
             unit: unit || '',
-            dosage: '用法不明', // 301レコードで更新される
-          };
+            dosage: '用法不明',
+          });
           
           console.log(`✅ 薬剤${medicationIndex}: ${medicationName} (${quantity}${unit})`);
         }
-        
-      } else if (recordType === '301') {
-        /**
-         * 301レコード: 用法・用量情報
-         * フォーマット: 301,インデックス,未使用,用法,日数,単位,フラグ...
-         */
+
+      } else if (recordType === '301') { /*301レコード: 用法・用量情報　フォーマット: 301,インデックス,未使用,用法,日数,単位,フラグ...*/
         console.log('💊 301レコード（用法情報）を解析');
         
-        const medicationIndex = parts[1]?.trim();
-        const dosageInfo = parts[2]?.trim();
-        const daysInfo = parts[3]?.trim();
-        const dosageUnit = parts[4]?.trim();
+        const medicationIndex = parseInt(parts[1]?.trim() || '0');/* medicationIndex は Map<number, WorkingMedication> のキーとして数値型である必要があるため、parseInt で整数に変換 */
+        const dosageInfo = parts[3]?.trim();
+        const daysInfo = parts[4]?.trim();
+        const dosageUnit = parts[5]?.trim();
         
-        if (currentMedication) {
-          // 直前の薬剤オブジェクトに用法情報を追加
+        const med = medicationMap.get(medicationIndex);
+        if (med) {
           if (dosageInfo) {
-            currentMedication.dosage = dosageInfo;
+            med.dosage = dosageInfo;
           }
           
-          // 日数の抽出（文字列として保持）
           if (daysInfo) {
-            const daysMatch = daysInfo.match(/(\d+)/);
+            const daysMatch = daysInfo.match(/(\d+)日分/) || daysInfo.match(/(\d+)/);
             if (daysMatch) {
-              currentMedication.days = daysMatch[1];  // 文字列として保持
+              med.days = daysMatch[1];
             }
           }
           
@@ -376,24 +356,23 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
       }
     });
     
-    // 最後の薬剤が残っている場合は追加
-    if (currentMedication && (currentMedication as any).name) {
+    medicationMap.forEach((med) => { // Mapから配列に変換 /* forEach の役割: 配列や Map の各要素に対して、指定したコールバック関数を順次実行。ループ処理を簡潔に書けるメソッド。 */
       medications.push({
-        name: (currentMedication as any).name,
-        dosage: (currentMedication as any).dosage || '用法不明',
-        quantity: (currentMedication as any).quantity || '',
-        unit: (currentMedication as any).unit || '',
-        days: (currentMedication as any).days
+        name: med.name,
+        dosage: med.dosage || '用法不明',
+        quantity: med.quantity || '',
+        unit: med.unit || '',
+        days: med.days
       });
-    }
+    });
     
     /**
      * Step 4: 結果の構築
      */
     console.log('=== Step 4: 結果構築 ===');
     console.log(`✅ 合計 ${medications.length} 種類の薬剤を解析完了`);
-    
-    medications.forEach((med, index) => {
+
+    medications.forEach((med, index) => {/* 「キーと値のペアだから (key, value) の順で来るはずだ」と直感的に思いがちですが、「配列と同じで『中身』が主役だから (value, key) の順」 と覚えると理解しやすい */
       console.log(`  [${index + 1}] ${med.name}`);
       console.log(`      用法: ${med.dosage}`);
       console.log(`      数量: ${med.quantity}${med.unit}`);
