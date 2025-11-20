@@ -3,27 +3,27 @@
 import { useState } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 
-interface SimpleQRReaderProps {
-  onResult: (data: string) => void;
+interface SimpleQRReaderProps {/* これが唯一のプロップス（段ボール箱）= Reactコンポーネントの引数としてのプロパティは一つのみという意味。interface（インターフェース）は、「この部品には、こういうデータを渡してくださいね」という契約書のようなもの */
+  onResult: (data: string) => void;/* void: 戻り値はなし（処理するだけでOK）。 */
   onError?: (error: Error) => void;
-  className?: string;
+  className?: string;/* Reactの部品は、ルールとして「引数は『Props』という名前のダンボール箱（オブジェクト）1つだけ」と決まっている。いろんなデータ（onResult, autoStart など）をまとめて1つの箱に入れて渡される。interfaceは「この箱の中には、これとこれが入っていますよ」という**「納品書（中身リスト）」** 。 */
   autoStart?: boolean;  // 自動起動オプションを追加
 }
 
-export default function SimpleQRReader({ onResult, onError, className, autoStart = false }: SimpleQRReaderProps) {
+export default function SimpleQRReader({ onResult, onError, className, autoStart = false }: SimpleQRReaderProps) {/* SimpleQRReaderPropsという箱からonResultなどのデータを取り出して使う(分割代入)。autoStart = false: もし autoStart が入っていなかったら、自動的に false（オフ）にしておくよ、という「初期値」の設定です。 */
   const [isScanning, setIsScanning] = useState(autoStart);  // autoStartがtrueなら最初からスキャン開始
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>('');/* 初期値は空文字 */
 
-  const handleScan = (result: any) => {
+  const handleScan = (result: any) => {/* カメラ（Scanner）から渡される「読み取り結果」を受け取ります。any は「どんな形式のデータが来るかわからないから、とりあえず何でも受け取るよ」という意味 */
     console.log('QR Scanner handleScan called:', result);
     
-    if (result && result.length > 0) {
+    if (result && result.length > 0) {/* データ（箱）があるのか確認 */
       console.log('結果の詳細:', result);
       
       const firstResult = result[0];
       console.log('最初の結果:', firstResult);
-      
-      if (firstResult?.rawValue) {
+
+      if (firstResult?.rawValue) {/* データ（箱）の中身は rawValue というラベルが貼ってある文字データが入っているか確認。rawValue とはあらかじめこのライブラリに定義されたプロパティで、スキャンしたQRコードの生データが格納されている。 */
         const data = firstResult.rawValue;
         console.log('QR Code scanned successfully:', data.substring(0, 100) + '...');
         console.log('データ長:', data.length);
@@ -40,11 +40,11 @@ export default function SimpleQRReader({ onResult, onError, className, autoStart
     }
   };
 
-  const handleError = (error: any) => {
+  const handleError = (error: any) => {/* カメラが起動しなかったり、途中で止まったりした時のトラブル対応係 */
     console.error('QR Scanner error:', error);
     let errorMessage = 'スキャンエラーが発生しました';
     
-    if (error?.name === 'NotAllowedError' || error?.message?.includes('Permission denied')) {
+    if (error?.name === 'NotAllowedError' || error?.message?.includes('Permission denied')) {/* NotAllowedError: 「許可されませんでした」というエラー名。'Permission denied': 拒否（Permission denied） */
       errorMessage = 'カメラへのアクセスが拒否されました。ブラウザの設定でカメラのアクセスを許可してください。';
     } else if (error?.name === 'NotFoundError' || error?.message?.includes('No camera')) {
       errorMessage = 'カメラが見つかりません。デバイスにカメラが接続されているか確認してください。';
@@ -55,15 +55,15 @@ export default function SimpleQRReader({ onResult, onError, className, autoStart
     }
     
     setError(errorMessage);
-    if (onError) onError(error);
+    if (onError) onError(error);/* if (onError !== undefined) {onError(error);} の省略形。 */
   };
 
-  const startScanning = () => {
+  const startScanning = () => {/* 「スキャン開始ボタン」が押された時の動きを定義している部分 */
     setError('');
     setIsScanning(true);
   };
 
-  const stopScanning = () => {
+  const stopScanning = () => {/* 「停止ボタン」が押された時の動きを定義している部分 */
     setIsScanning(false);
   };
 

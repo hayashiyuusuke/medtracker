@@ -23,7 +23,7 @@ import type {
  * @returns 判別されたデータ形式
  */
 /* この2行はJSDocコメント と呼ばれるもので、関数の説明を記述するための特殊なコメント形式。なくてもいいがあった方が親切でわかりやすい。 param = パラメーター qrData = 関数の引数名 returns = 戻り値の説明 */
-export function detectQrFormat(qrData: string): QrFormat {
+export function detectQrFormat(qrData: string): QrFormat {/* 読み取ったQRコードが『どの種類（フォーマット）』なのかを自動で見分ける、仕分け係の関数 */
   console.log('🔍 QR形式判別開始（改善版）:', qrData.substring(0, 50) + '...');
   
   // 空データチェック　ガード節
@@ -95,13 +95,13 @@ export function parseJahisData(qrData: string): MedicationData | null {/* qrData
   console.log('🔬 JAHIS解析開始');
   
   try {
-    // JAHIS Base64形式の処理/* Base64形式とは、バイナリデータを64種類のASCII文字で表現する方式。バイナリを通信で壊れないテキストに変えるために使用される */
-    if (qrData.startsWith('JAHIS|')) {
+
+    if (qrData.startsWith('JAHIS|')) {    // JAHIS Base64形式の処理　Base64形式とは、バイナリデータを64種類のASCII文字で表現する方式。バイナリを通信で壊れないテキストに変えるために使用される
       return parseJahisBase64Format(qrData);
     }
 
-    // JAHISバイナリ形式の処理/* バイナリデータとは、特定の形式で表現されたデータのことです。 */
-    if (qrData.includes('\x1C')) {
+    if (qrData.includes('\x1C')) {    // JAHISバイナリ形式の処理　バイナリデータとは、特定の形式で表現されたデータのことです。 テキストデータとは異なり、バイナリデータはコンピュータが直接理解できる形式で保存されます。画像、音声、動画、圧縮ファイルなど、多くの種類のデータがバイナリ形式で保存されます。/* '\x1C' = ASCII制御文字（ファイル区切り文字） */
+
       return parseJahisBinaryFormat(qrData);
     }
     
@@ -421,16 +421,11 @@ export function parseNonJahisCsvData(qrData: string): MedicationData | null {
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 
-/**
- * 🎯 統一QRコード処理メイン関数
- * 
- * この関数を呼び出すだけで、QRコード形式を意識することなく
- * 常にMedicationDataオブジェクトが取得できます。
- * 
+/** 
  * @param qrData QRコードから読み取った生データ
  * @returns 統一形式のMedicationData、または解析失敗時はnull
  */
-export function processQrCode(qrData: string): MedicationData | null {
+export function processQrCode(qrData: string): MedicationData | null {/*  * 🎯 統一QRコード処理メイン関数　　  この関数を呼び出すだけで、QRコード形式を意識することなく、常にMedicationDataオブジェクトが取得できる。 */
   console.log('🎯 統一QRコード処理開始');
   console.log('データ長:', qrData?.length || 0);
   console.log('先頭50文字:', qrData?.substring(0, 50) || '');
@@ -439,8 +434,8 @@ export function processQrCode(qrData: string): MedicationData | null {
     // Step 1: 形式判別
     const format = detectQrFormat(qrData);
     console.log('判別結果:', format);
-    
-    if (format === 'UNKNOWN') {
+
+    if (format === 'UNKNOWN') {/* qrDataが空データの時か、JAHIS形式・非JAHIS形式ではない場合 */
       console.log('❌ 未対応の形式です');
       return null;
     }
@@ -484,14 +479,11 @@ export function processQrCode(qrData: string): MedicationData | null {
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 
-/**
- * テスト用のサンプルデータで動作確認（拡張版）
- */
-export function testUnifiedParser(): void {
+export function testUnifiedParser(): void {/** テスト用のサンプルデータで動作確認（拡張版）*/
+
   console.log('🧪 統一パーサーテスト開始（拡張版）');
   
-  // テストデータセット
-  const testCases = [
+  const testCases = [  // テストデータセット
     {
       name: '非JAHISカンマ区切り（パターンA - 数字のみ）',
       data: "32971101830,1,301,1,1 日 1 回(朝食) 2 錠毎,1,調剤,5,1,,1,201,2,ベタメタゾンリン酸塩錠10mg「タナベ」,2,錠,4,4980022F2042,1,301,2,,(朝 タ)食後,30,日分,1,1,,1",
@@ -527,13 +519,13 @@ export function testUnifiedParser(): void {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
   // 各テストケースを実行
-  testCases.forEach((testCase, index) => {
+  testCases.forEach((testCase, index) => {/* それぞれの配列に対してtestCaseという引数名とindexという引数名を付与 */
     console.log(`--- テスト${index + 1}: ${testCase.name} ---`);
     console.log('テストデータ:', testCase.data.substring(0, 50) + '...');
     
     // 形式判別テスト
     const detectedFormat = detectQrFormat(testCase.data);
-    const formatTestResult = detectedFormat === testCase.expected ? '✅' : '❌';
+    const formatTestResult = detectedFormat === testCase.expected ? '✅' : '❌';/* detectedFormat と testCase.expected（正解の期待値）は同じか？ */
     console.log(`形式判別: ${detectedFormat} (期待値: ${testCase.expected}) ${formatTestResult}`);
     
     // 実際の解析テスト
@@ -553,39 +545,32 @@ export function testUnifiedParser(): void {
   console.log('🧪 テスト完了');
 }
 
-/**
- * デバッグ用の詳細ログ出力
- */
-export function debugQrData(qrData: string): void {
+export function debugQrData(qrData: string): void {//デバッグ用の詳細ログ出力
   console.log('🔍 QRデータ詳細デバッグ');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('データ長:', qrData.length);
   console.log('先頭100文字:', qrData.substring(0, 100));
   console.log('末尾100文字:', qrData.substring(Math.max(0, qrData.length - 100)));
   
-  // 特殊文字の検出
-  const specialChars = ['\x1C', '\x1D', '\x1E', '\x1F'];
+  const specialChars = ['\x1C', '\x1D', '\x1E', '\x1F'];// 特殊文字の検出
   console.log('特殊文字検出:');
   specialChars.forEach(char => {
-    const count = (qrData.match(new RegExp(char, 'g')) || []).length;
+    const count = (qrData.match(new RegExp(char, 'g')) || []).length;/* new はモノを作るコマンド（インスタンス化）。RegExp（レギュラーエクスプレッション）は「正規表現」という検索ルールを作る機能。char: 今探している特殊文字。'g': Global（グローバル） の略。「最初に見つかったら終わり」ではなく、「データ全体から全部探し出して！」 という指示。 */
     if (count > 0) {
-      console.log(`  - 0x${char.charCodeAt(0).toString(16)}: ${count}個`);
+      console.log(`  - 0x${char.charCodeAt(0).toString(16)}: ${count}個`);/* 0x：「これは16進数ですよ、という目印」。char.charCodeAt(0)：文字のマイナンバー（ID番号）を調べる。(0)の理由は何番目か必ず記入しなければいけないからあえて１番目とい意味の(0)を指定。.toString(16)：16進数に変換。 */
     }
   });
   
-  // カンマの数
-  const commaCount = (qrData.match(/,/g) || []).length;
+  const commaCount = (qrData.match(/,/g) || []).length;  // カンマの数
   console.log('カンマ数:', commaCount);
   
-  // 形式判別結果
-  const format = detectQrFormat(qrData);
+  const format = detectQrFormat(qrData);  // 形式判別結果
   console.log('判別形式:', format);
-  
+
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
-// デフォルトエクスポート
-export default {
+export default {/* export default は、1つのファイルにつき1回しか使えないため、ここでまとめて記載。  */
   processQrCode,
   detectQrFormat,
   parseJahisData,
