@@ -8,11 +8,13 @@ interface SimpleQRReaderProps {/* これが唯一のプロップス（段ボー�
   onError?: (error: Error) => void;
   className?: string;/* Reactの部品は、ルールとして「引数は『Props』という名前のダンボール箱（オブジェクト）1つだけ」と決まっている。いろんなデータ（onResult, autoStart など）をまとめて1つの箱に入れて渡される。interfaceは「この箱の中には、これとこれが入っていますよ」という**「納品書（中身リスト）」** 。 */
   autoStart?: boolean;  // 自動起動オプションを追加
+  autoStop?: boolean;   // 読み取り後に自動停止するかどうか
 }
 
-export default function SimpleQRReader({ onResult, onError, className, autoStart = false }: SimpleQRReaderProps) {/* SimpleQRReaderPropsという箱からonResultなどのデータを取り出して使う(分割代入)。autoStart = false: もし autoStart が入っていなかったら、自動的に false（オフ）にしておくよ、という「初期値」の設定です。 */
+export default function SimpleQRReader({ onResult, onError, className, autoStart = false, autoStop = true }: SimpleQRReaderProps) {/* SimpleQRReaderPropsという箱からonResultなどのデータを取り出して使う(分割代入)。autoStart = false: もし autoStart が入っていなかったら、自動的に false（オフ）にしておくよ、という「初期値」の設定です。 */
   const [isScanning, setIsScanning] = useState(autoStart);  // autoStartがtrueなら最初からスキャン開始
   const [error, setError] = useState<string>('');/* 初期値は空文字 */
+  const [lastScannedData, setLastScannedData] = useState<string>(''); // 重複読み取り防止用
 
   const handleScan = (result: any) => {/* カメラ（Scanner）から渡される「読み取り結果」を受け取ります。any は「どんな形式のデータが来るかわからないから、とりあえず何でも受け取るよ」という意味 */
     console.log('QR Scanner handleScan called:', result);
@@ -25,11 +27,25 @@ export default function SimpleQRReader({ onResult, onError, className, autoStart
 
       if (firstResult?.rawValue) {/* データ（箱）の中身は rawValue というラベルが貼ってある文字データが入っているか確認。rawValue とはあらかじめこのライブラリに定義されたプロパティで、スキャンしたQRコードの生データが格納されている。 */
         const data = firstResult.rawValue;
+        
+        // 重複読み取り防止（連続スキャンモード時）
+        if (!autoStop && data === lastScannedData) {
+          console.log('重複データのためスキップ');
+          return;
+        }
+        
         console.log('QR Code scanned successfully:', data.substring(0, 100) + '...');
         console.log('データ長:', data.length);
         
+        setLastScannedData(data);
         onResult(data);
-        setIsScanning(false);
+        
+        if (autoStop) {
+          setIsScanning(false);
+        } else {
+          // 連続スキャンの場合、少し待ってから次の読み取りを許可（簡易的なデバウンス）
+          setTimeout(() => setLastScannedData(''), 2000);
+        }
       } else {
         console.log('❌ rawValueが存在しません:', firstResult);
         setError('QRコードデータの読み取りに失敗しました');
@@ -68,9 +84,9 @@ export default function SimpleQRReader({ onResult, onError, className, autoStart
   };
 
   return (
-    <div className={`space-y-4 ${className}`}>
+    <div className={`space-y-4 ${className}`}>{/* ${className}: 親コンポーネントから渡されたデザイン（Propsの className）もここに追加して適用 */}
       {/* autoStartがfalseの場合のみボタンを表示 */}
-      {!autoStart && (
+      {!autoStart && (/* ユーザーが使っていて autoStart が false になることは絶対にないが、拡張性のために残しておく。 */
         <div className="flex gap-2">
           <button
             onClick={startScanning}

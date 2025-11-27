@@ -57,43 +57,8 @@ export interface DoseRecord {
   medication_record?: MedicationRecord;
 }
 
-export interface QRCodeData {
-  prescription_date?: string;
-  hospital_name?: string;
-  prescribed_by?: string;
-  pharmacy_name?: string;
-  medications?: Array<{
-    name: string;
-    dosage_amount: number;
-    dosage_unit: string;
-    frequency_per_day: number;
-    duration_days: number;
-    total_amount?: number;
-    instructions?: string;
-  }>;
-}
-
-// QRコードから検出された薬剤データの型
-export interface QrMedicationData {
-  name: string;
-  quantity: string;
-  unit: string;
-  dosage: string;
-  days: string;
-}
-
-// QRコード解析結果の薬剤情報型（unifiedQrParser用）
-export interface ParsedMedication {
-  name: string;       // 薬剤名
-  dosage: string;     // 用法・用量
-  quantity?: string;  // 数量
-  unit?: string;      // 単位
-  days?: string;      // 処方日数
-}
-
 // QRコード解析結果の統一データ形式
 export interface MedicationData {
-  sourceFormat: 'JAHIS' | 'NON_JAHIS_CSV';  // データ形式の識別
   prescribedDate: string;                    // 処方日 (YYYY-MM-DD)
   hospitalName: string;                      // 医療機関名
   patientName: string;                       // 患者氏名
@@ -101,8 +66,16 @@ export interface MedicationData {
   rawData?: string;                         // 元データ（デバッグ用）
 }
 
-// QRコード形式判別結果
-export type QrFormat = 'JAHIS' | 'NON_JAHIS_CSV' | 'UNKNOWN';
+// QRコード解析結果の薬剤情報型（unifiedQrParser用）
+export interface ParsedMedication {
+  name: string;       // 薬剤名
+  usage_text: string; // 用法・用量（表示用・正データ）
+  estimated_count?: number | null; // 推定1日回数
+  estimated_dose?: number | null;  // 推定1回量
+  quantity?: string;  // 総数量
+  unit?: string;      // 単位
+  days?: string;      // 処方日数
+}
 
 // 解析エラー情報
 export interface ParseError {

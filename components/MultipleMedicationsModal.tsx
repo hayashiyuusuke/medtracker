@@ -1,20 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import type { QrMedicationData } from '../types/database';
+import type { ParsedMedication } from '../types/database';
 
 interface MultipleMedicationsModalProps {
-  medications: QrMedicationData[];  // 共通型を使用
-  isOpen: boolean;
-  onClose: () => void;
-  onSelectMedication: (medication: QrMedicationData) => void;  // 共通型を使用
+  medications: ParsedMedication[];  // 共通型を使用
+  isOpen: boolean;/* boolean: true なら画面に表示し、false なら隠す。 */
+  onClose: () => void;/* 「×ボタン」や「キャンセル」が押されたら、この関数を実行して親に知らせる。 */
+  onSelectMedication: (medication: ParsedMedication) => void;  // 共通型を使用
 }
 
 export default function MultipleMedicationsModal({
   medications,
   isOpen,
   onClose,
-  onSelectMedication
+  onSelectMedication/* 分割代入：親から渡された props という大きな箱から、必要な4つの道具（medications など）を取り出して、変数として使えるようにしている。 */
 }: MultipleMedicationsModalProps) {
   if (!isOpen) return null;
 
@@ -42,7 +41,7 @@ export default function MultipleMedicationsModal({
             <div
               key={index}
               className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-              onClick={() => {
+              onClick={() => {/* ユーザーがクリックすれば下2行が呼び出される */
                 onSelectMedication(med);
                 onClose();
               }}
@@ -63,7 +62,7 @@ export default function MultipleMedicationsModal({
                 <div>
                   <span className="font-medium">用法:</span>
                   <br />
-                  {med.dosage || '用法不明'}
+                  {med.usage_text || '用法不明'}
                 </div>
                 <div>
                   <span className="font-medium">期間:</span>
