@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import Link from 'next/link';
 
 /**
  * ヘッダーコンポーネント
@@ -62,25 +63,25 @@ export default function Header() {
                 🧠 [問い] なぜ 'hidden md:flex' クラスを使っているのでしょうか？
                 レスポンシブデザインの観点から考えてみてください。
               */}
-              <a 
+              <Link 
                 href="/" 
                 className="hover:text-green-200 transition-colors duration-200"
                 aria-current="page" // アクセシビリティ: 現在のページを示す
               >
                 ホーム
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href="/medications/new" 
                 className="hover:text-green-200 transition-colors duration-200"
               >
                 新しい処方記録
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href="/history" 
                 className="hover:text-green-200 transition-colors duration-200"
               >
                 履歴
-              </a>
+              </Link>
             </div>
 
             {/* 

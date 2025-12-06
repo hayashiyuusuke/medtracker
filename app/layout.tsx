@@ -11,6 +11,7 @@ import "./globals.css";
 import { AuthProvider } from '../contexts/AuthContext';
 import BottomNav from '../components/BottomNav';
 import Header from '../components/Header'; 
+import NotificationManager from '../components/NotificationManager';
 
 /*
  * Geistフォントの設定
@@ -77,31 +78,11 @@ export default function RootLayout({
         */}
         
         <AuthProvider>
-          {/* 
-            🔍 [解説] AuthProvider
-            - アプリケーション全体で認証状態を管理
-            - Reactのコンテキスト機能を使用
-            - 子コンポーネントどこからでも認証情報にアクセス可能
-          */}
-          
-          {/* 🆕 ヘッダー部分 - 全ページ共通 */}
+          <NotificationManager />
           <Header />
-          
-          {/* 
-            📄 [メインコンテンツエリア] 
-            各ページのコンテンツがここに表示される
-          */}
           <main className="flex-1 container mx-auto px-4 py-8 bg-[#cee6c1]">
-            {/* 
-              🧠 [問い] 'flex-1' クラスの役割は何でしょうか？→
-              画面の残りのスペースを占有するため
-              つまり、ヘッダーとフッターの高さを除いた残り全体を占めるのはなぜ？→
-              フレックスボックスの特性を利用して、利用可能なスペースを自動的に調整するため。
-            */}
             {children}
           </main>
-          
-          {/* 🆕 フッター部分 - モバイル用ナビゲーション */}
           <BottomNav />
         </AuthProvider>
       </body>

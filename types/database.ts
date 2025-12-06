@@ -26,6 +26,7 @@ export interface MedicationRecord {
   total_amount?: number;
   instructions?: string;
   pharmacy_name?: string;
+  notification_times?: string[]; // 通知時間のリスト (例: ["08:00", "12:00"])
   created_at?: string;
   updated_at?: string;
   medication?: Medication;
@@ -42,6 +43,7 @@ export interface MedicationRecordFormData {
   duration_days: number;
   total_amount: number;
   instructions: string;
+  notification_times?: string[];
 }
 
 export interface DoseRecord {

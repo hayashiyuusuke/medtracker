@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { medicationRecordService } from '../../lib/database';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import MedicationRecordCard from '../../components/MedicationRecordCard';
+import NotificationSettingsModal from '../../components/NotificationSettingsModal';
 import type { MedicationRecord } from '../../types/database';
 
 export default function MedicationsPage() {/* コンポーネント宣言としての役割 */
@@ -13,6 +14,10 @@ export default function MedicationsPage() {/* コンポーネント宣言とし�
   const [records, setRecords] = useState<MedicationRecord[]>([]);/*.  useState を<MedicationRecord[]>という型で指定して、初期値は([])で空の配列とする。 */
   const [loading, setLoading] = useState(true);/* 初期値がtrueなのはページが開かれた瞬間からローディングを開始するから */
   const [error, setError] = useState('');
+  
+  // 通知モーダル用のstate
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [selectedNotificationMedication, setSelectedNotificationMedication] = useState<MedicationRecord | null>(null);
 
   useEffect(() => {/* useEffect とはコンポーネントが表示された時に実行。ここでは[user] = user が変わったら再実行 */
     const fetchRecords = async () => {
@@ -45,6 +50,20 @@ export default function MedicationsPage() {/* コンポーネント宣言とし�
     }
   };
 
+  // 通知設定ボタンがクリックされた時の処理
+  const handleNotificationClick = (record: MedicationRecord) => {
+    setSelectedNotificationMedication(record);
+    setIsNotificationModalOpen(true);
+  };
+
+  // 通知設定が更新された時の処理
+  const handleNotificationUpdate = (updatedRecord: MedicationRecord) => {
+    setRecords(records.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+  };/* ・もともとの records: [薬A (id: 1), 薬B (id: 2), 薬C (id: 3)]
+       ・薬B の通知が更新された updatedRecord: {id: 2, ...新しい通知設定}
+       ・結果の新しい配列: [薬A (id: 1), 更新された薬B (id: 2), 薬C (id: 3)]
+    */
+
   return (
     <ProtectedRoute> 
       {loading ? (/* 三項演算子 👉 {条件 ? 真の場合 : 偽の場合} */
@@ -59,8 +78,8 @@ export default function MedicationsPage() {/* コンポーネント宣言とし�
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-3xl  text-gray-700">処方一覧</h1>
               <div className="flex gap-4">
+              </div>
             </div>
-          </div>
 
           {error && (/* error が存在する（真）なら、エラーメッセージを表示する。errorが存在しなければ何もしない。 左側 && 右側 👉 左側が falsy → 左側を返す。左側が truthy → 右側を返す。*/
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
@@ -102,12 +121,22 @@ export default function MedicationsPage() {/* コンポーネント宣言とし�
                   key={record.id}
                   record={record}
                   onDelete={handleDelete}/* 子コンポーネント（MedicationRecordCard.tsx）では、これらを関数の引数として受け取っている。（MedicationRecordCardProps） */
+                  onNotificationClick={handleNotificationClick}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+      )}
+
+      {selectedNotificationMedication && (// 条件付きレンダリング
+        <NotificationSettingsModal
+          isOpen={isNotificationModalOpen}
+          onClose={() => setIsNotificationModalOpen(false)}
+          record={selectedNotificationMedication}
+          onUpdate={handleNotificationUpdate}
+        />
       )}
     </ProtectedRoute>
   );

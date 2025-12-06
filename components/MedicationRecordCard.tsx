@@ -5,11 +5,15 @@ import type { MedicationRecord } from '../types/database';
 interface MedicationRecordCardProps {/* 親コンポーネント（page.tsx）から受け取るプロパティ */
   record: MedicationRecord;
   onDelete?: (id: string) => void;
+  onNotificationClick?: (record: MedicationRecord) => void;
 }
 
-export default function MedicationRecordCard({ record, onDelete }: MedicationRecordCardProps) {
+export default function MedicationRecordCard({ 
+  record, 
+  onDelete, 
+  onNotificationClick 
+}: MedicationRecordCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-
   const formatDate = (dateString: string) => {/* record.prescription_date（データベースから取得した日付文字列。例: "2025-11-27"）が、この formatDate 関数の dateString という引数に渡される。 */
     return new Date(dateString).toLocaleDateString('ja-JP');
   };
@@ -122,6 +126,20 @@ export default function MedicationRecordCard({ record, onDelete }: MedicationRec
 
           {/* アクションボタン */}
           <div className="mt-4 pt-2 flex justify-end space-x-2 border-t border-gray-200">
+            {onNotificationClick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNotificationClick(record);
+                }}
+                className="px-3 py-1.5 text-yellow-600 border border-yellow-600 rounded hover:bg-yellow-50 text-xs font-medium flex items-center gap-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+                </svg>
+                通知設定
+              </button>
+            )}
             <Link
               href={`/medications/${record.id}/edit`}
               className="px-3 py-1.5 text-blue-600 border border-blue-600 rounded hover:bg-blue-50 text-xs font-medium"

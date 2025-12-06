@@ -10,9 +10,14 @@ CREATE TABLE IF NOT EXISTS medications (
     strength TEXT NOT NULL,
     dosage_form TEXT NOT NULL,
     route_of_administration TEXT NOT NULL,
+    kegg_drug_id TEXT UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- KEGG IDにインデックスを追加
+CREATE INDEX IF NOT EXISTS idx_medications_kegg_drug_id ON medications(kegg_drug_id);
+COMMENT ON COLUMN medications.kegg_drug_id IS 'KEGG MEDICUS APIのDrug ID (例: D00109)';
 
 -- 2. 薬剤記録テーブル（ユーザーの処方記録）
 CREATE TABLE IF NOT EXISTS medication_records (
@@ -29,9 +34,12 @@ CREATE TABLE IF NOT EXISTS medication_records (
     total_amount DECIMAL(10,2),
     instructions TEXT,
     pharmacy_name TEXT,
+    notification_times JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+COMMENT ON COLUMN medication_records.notification_times IS '通知時間のリスト (例: ["08:00", "12:00"])';
 
 -- 3. 服用記録テーブル
 CREATE TABLE IF NOT EXISTS dose_records (

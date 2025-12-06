@@ -1,17 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '../../../contexts/AuthContext';
 import { medicationRecordService } from '../../../lib/database';
-import { supabase } from '../../../lib/supabaseClient';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import SimpleQRReader from '../../../components/SimpleQRReader';
 import MultipleMedicationsModal from '../../../components/MultipleMedicationsModal';
-import { processQrCode, debugQrData } from '../../../lib/unifiedQrParser';
+import { processQrCode } from '../../../lib/unifiedQrParser';
 import MedicationSearch from '../../../components/MedicationSearch';
-import type { Medication, MedicationRecordFormData, ParsedMedication, MedicationData } from '../../../types/database';
+import type { Medication, MedicationRecordFormData, ParsedMedication } from '../../../types/database';
 
 function NewMedicationPage() {
   const { user } = useAuth();
