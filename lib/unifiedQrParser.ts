@@ -3,12 +3,6 @@ import type {
   MedicationData
 } from '../types/database';
 
-/**
- * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- * 🔬 Step 2: JAHISパーサー実装 (CSV特化)
- * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- */
-
 // 推定ロジック用ヘルパー関数（リマインダー通知のための参考値）
 function estimateCount(text: string): number | null {/* １日服用回数を数値化する関数 */
   if (!text) return null;
@@ -36,7 +30,7 @@ function estimateDose(text: string): number | null {/* １回服用量を数値�
   return null;
 }
 
-export function processQrCode(qrData: string): MedicationData | null {
+export function processQrCode(qrData: string): MedicationData | null {// qrData = app/medications/new/page.tsx の combinedData 
   console.log('🔬 JAHIS解析開始 (新ロジック)');
   
   try {

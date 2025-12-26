@@ -134,14 +134,7 @@ export default function EditMedicationPage() {
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl text-gray-700">処方記録編集</h1>
-            <Link
-              href="/medications"
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-            >
-              キャンセル
-            </Link>
           </div>
-
           <div className="bg-white rounded-lg shadow p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -155,7 +148,7 @@ export default function EditMedicationPage() {
                     value={formData.prescription_date}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -168,7 +161,7 @@ export default function EditMedicationPage() {
                     name="prescribed_by"
                     value={formData.prescribed_by}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -181,7 +174,7 @@ export default function EditMedicationPage() {
                     name="hospital_name"
                     value={formData.hospital_name}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -194,7 +187,7 @@ export default function EditMedicationPage() {
                     name="pharmacy_name"
                     value={formData.pharmacy_name}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -210,15 +203,16 @@ export default function EditMedicationPage() {
                       onChange={handleChange}
                       step="0.1"
                       min="0"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="text-gray-900 flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <select
                       name="dosage_unit"
                       value={formData.dosage_unit}
                       onChange={(e) => setFormData(prev => ({ ...prev, dosage_unit: e.target.value }))}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="text-gray-900 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="錠">錠</option>
+                      <option value="回">包</option>
                       <option value="mg">mg</option>
                       <option value="ml">ml</option>
                       <option value="g">g</option>
@@ -237,9 +231,9 @@ export default function EditMedicationPage() {
                       value={formData.total_amount}
                       onChange={handleChange}
                       min="0"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                      className="text-gray-900 flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <span className="px-3 py-2 text-gray-500">{formData.dosage_unit}</span>
+                    <span className="px-3 py-2 text-gray-900">{formData.dosage_unit}</span>
                   </div>
                 </div>
 
@@ -253,7 +247,7 @@ export default function EditMedicationPage() {
                     value={formData.duration_days}
                     onChange={handleChange}
                     min="1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -267,7 +261,7 @@ export default function EditMedicationPage() {
                   value={formData.instructions}
                   onChange={handleChange}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="例: 1日3回 毎食後 1錠"
                 />
               </div>
@@ -286,7 +280,7 @@ export default function EditMedicationPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {saving ? '保存中...' : '保存'}
                 </button>

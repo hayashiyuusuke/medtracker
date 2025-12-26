@@ -3,23 +3,34 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
-import { doseRecordService } from '../../lib/database';
+import { doseRecordService, medicationRecordService } from '../../lib/database';// 服用履歴ページで「予約リスト（予定）」を導入したため、処方データが必要になったからmedicationRecordService を新たにインポート
 import ProtectedRoute from '../../components/ProtectedRoute';
-import type { DoseRecord } from '../../types/database';
+import { hasFrequencyLimit } from '../../lib/timeUtils';
+import type { DoseRecord, MedicationRecord } from '../../types/database';
+
+interface DoseScheduleItem {// データベースには存在しない、画面表示専用の型
+  id: string; // 既存のDoseRecord ID または 一時的なID（服用した薬剤データにつけられるID）
+  medicationRecordId: string;// MedicationRecordのID（服用に限らず全ての薬剤データにつけられているID）
+  medicationName: string;
+  scheduledTime: string; // "08:00" などの時刻文字列
+  isTaken: boolean;// notific
+  doseRecordId?: string; // 既に記録がある場合 DoseRecord ID
+  instructions?: string; // 用法（時間がない場合用）
+  isTimeSpecific: boolean; // 時間指定があるかどうか
+}
 
 /**
- * 服用履歴ページ - ユーザーの薬剤服用記録を表示
  * 日付別フィルタリング機能と服用完了ボタンを提供
  */
-const DoseHistoryPage: React.FC = () => {
+const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤服用記録を表示
   const { user } = useAuth();
-  const [records, setRecords] = useState<DoseRecord[]>([]);
+  const [scheduleItems, setScheduleItems] = useState<DoseScheduleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);// 選択された日付を管理する(初期値は現在日時)
 
   useEffect(() => {
-    const fetchRecords = async () => {
+    const fetchData = async () => {
       if (!user) {
         setLoading(false);
         return;
@@ -28,27 +39,108 @@ const DoseHistoryPage: React.FC = () => {
       try {
         setLoading(true);
         setError('');
-        const data = await doseRecordService.getUserDoseRecords(user.id, selectedDate);
-        setRecords(data);
+
+        // 1. 処方データと今日の服用記録を並行して取得
+        const [medicationRecords, doseRecords] = await Promise.all([//.  Promise.all = 下記に指定した二つの非同期処理を並行して実行し、両方の結果が揃うのを待つ
+          medicationRecordService.getUserMedicationRecords(user.id),// 特定ユーザーの全ての処方データを取得
+          doseRecordService.getUserDoseRecords(user.id, selectedDate)// 特定ユーザーの指定日付の服用記録を取得
+        ]);
+
+        // 2. 予定リストを生成
+        const items: DoseScheduleItem[] = [];
+
+        medicationRecords.forEach(med => {// map ではなく forEach を使う理由は、単に配列をループして items に要素を追加したいだけだから=map は新しい配列を返してしまう。forではない理由はbreak や return を使わないからforEach の方がシンプル
+          // A. 通知時間がある場合
+          if (med.notification_times && med.notification_times.length > 0) {
+            med.notification_times.forEach(time => {
+              // 既に記録があるか探す
+              const existingRecord = doseRecords.find(d => 
+                d.medication_record_id === med.id && 
+                d.scheduled_time.includes(time) // 簡易的な判定（本来は日付も考慮）
+              );
+
+              items.push({
+                id: existingRecord?.id || `temp-${med.id}-${time}`,// temp-: 一時的（temporary）であることを示す接頭語
+                medicationRecordId: med.id,
+                medicationName: med.medication?.drug_name || '名称不明',
+                scheduledTime: time,
+                isTaken: existingRecord?.taken || false,
+                doseRecordId: existingRecord?.id,
+                isTimeSpecific: true
+              });
+            });
+          } 
+          // B. 通知時間がない（「適宜服用」や「疼痛時」など）場合
+          else {
+            // 回数制限がある場合のみ枠を作る
+            if (hasFrequencyLimit(med.instructions || '')) {
+              const count = med.frequency_per_day || 1;
+              for (let i = 0; i < count; i++) {
+                // この薬の記録のうち、時間指定がないもの（または手動記録）を順番に割り当てる
+                // ※ 簡易実装：本来はもっと厳密な紐付けが必要
+                const existingRecord = doseRecords.filter(d => d.medication_record_id === med.id)[i];// .filter()	条件を満たす全ての要素
+
+                items.push({
+                  id: existingRecord?.id || `temp-${med.id}-dose-${i}`,
+                  medicationRecordId: med.id,
+                  medicationName: med.medication?.drug_name || '名称不明',
+                  scheduledTime: existingRecord ? formatTime(existingRecord.actual_time || '') : '-',
+                  isTaken: existingRecord?.taken || false,
+                  doseRecordId: existingRecord?.id,
+                  instructions: med.instructions || `${i + 1}回目`,
+                  isTimeSpecific: false
+                });
+              }
+            } else {
+              // 回数制限なしの場合：既存の服用記録がある場合のみ枠を作る
+              const existingRecords = doseRecords.filter(d => d.medication_record_id === med.id);
+              existingRecords.forEach((existingRecord, index) => {
+                items.push({
+                  id: existingRecord.id,
+                  medicationRecordId: med.id,
+                  medicationName: med.medication?.drug_name || '名称不明',
+                  scheduledTime: formatTime(existingRecord.actual_time || ''),
+                  isTaken: existingRecord.taken,
+                  doseRecordId: existingRecord.id,
+                  instructions: med.instructions || '適宜',
+                  isTimeSpecific: false
+                });
+              });
+            }
+          }
+        });
+
+        // 3. 時間順にソート（時間指定なしは最後）
+        items.sort((a, b) => {// 比較関数: (a, b) => number の形式
+          if (a.isTimeSpecific && b.isTimeSpecific) {
+            return a.scheduledTime.localeCompare(b.scheduledTime);// localeCompare(...): 文字列を辞書順に比較するJavaScriptのメソッド
+          }
+          if (a.isTimeSpecific) return -1;
+          if (b.isTimeSpecific) return 1;
+          return 0;
+        });
+
+        setScheduleItems(items);
+
       } catch (err) {
-        console.error('服用記録の取得エラー:', err);
-        setError('服用記録の取得に失敗しました');
+        console.error('データの取得エラー:', err);
+        setError('データの取得に失敗しました');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecords();
-  }, [user, selectedDate]);
+    fetchData();
+  }, [user, selectedDate]);// 依存配列: user と selectedDate が変更されたときに再実行
 
   const formatTime = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleTimeString('ja-JP', {
+      return new Date(dateString).toLocaleTimeString('ja-JP', {//.  .toLocaleTimeString() : 日時をロケール（言語・地域）に基づいてフォーマットされた時間文字列に変換するメソッド
         hour: '2-digit',
         minute: '2-digit'
       });
     } catch {
-      return '不明';
+      return '--:--';
     }
   };
 
@@ -60,17 +152,30 @@ const DoseHistoryPage: React.FC = () => {
     }
   };
 
-  const handleMarkDoseTaken = async (recordId: string) => {
+  const handleMarkDoseTaken = async (item: DoseScheduleItem) => {
     try {
-      await doseRecordService.markDoseTaken(recordId);
-      // 記録を更新
-      setRecords(prev =>
-        prev.map(r =>
-          r.id === recordId
-            ? { ...r, taken: true, actual_time: new Date().toISOString() }
-            : r
-        )
-      );
+      if (item.isTaken) return;
+
+      if (!item.doseRecordId) {// 論理NOT演算子
+        // 新規作成
+        const newRecord = await doseRecordService.createDoseRecord(user!.id, {// 非nullアサーション演算子: user が null でないことを TypeScript に伝える
+          user_id: user!.id,
+          medication_record_id: item.medicationRecordId,
+          scheduled_time: item.isTimeSpecific ? `${selectedDate}T${item.scheduledTime}:00` : new Date().toISOString(),
+          taken: true,
+          actual_time: new Date().toISOString()
+        });
+        
+        setScheduleItems(prev => prev.map(i => // prev = scheduleItems の最新の値
+          i.id === item.id ? { ...i, isTaken: true, doseRecordId: newRecord.id } : i// ...i: 既存のオブジェクトの全プロパティを展開（コピー）し、isTaken と doseRecordId を上書き
+        ));
+      } else {
+        // 更新
+        await doseRecordService.markDoseTaken(item.doseRecordId);
+        setScheduleItems(prev => prev.map(i => 
+          i.id === item.id ? { ...i, isTaken: true } : i
+        ));
+      }
     } catch (err) {
       console.error('服用記録の更新エラー:', err);
       setError('服用記録の更新に失敗しました');
@@ -93,15 +198,15 @@ const DoseHistoryPage: React.FC = () => {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen py-8 bg-[#cee6c1]">
         <div className="max-w-4xl mx-auto px-4">
           
           {/* ページヘッダー */}
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">服用履歴</h1>
+            <h1 className="text-3xl text-gray-700">服用履歴</h1>
             <Link
               href="/"
-              className="bg-gray-600 text-white px-6 py-3 rounded-md hover:bg-gray-700 font-medium"
+              className="bg-white text-gray-700 px-6 py-3 rounded-md hover:bg-gray-50 font-medium shadow-sm"
             >
               ホーム
             </Link>
@@ -131,7 +236,7 @@ const DoseHistoryPage: React.FC = () => {
           )}
 
           {/* 服用記録一覧 */}
-          {records.length === 0 ? (
+          {scheduleItems.length === 0 ? (
             <div className="bg-white rounded-lg shadow p-8 text-center">
               <div className="text-gray-500 mb-4">
                 <svg
@@ -149,94 +254,50 @@ const DoseHistoryPage: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {formatDate(selectedDate)}の服用記録はありません
+                {formatDate(selectedDate)}の服用予定はありません
               </h3>
               <p className="text-gray-600">
-                この日の服用記録がまだ登録されていません
+                処方データが登録されていないか、予定がありません
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {records.map((record) => (
+              {scheduleItems.map((item) => (
                 <div
-                  key={record.id}
-                  className={`bg-white rounded-lg shadow p-6 ${
-                    record.taken ? 'border-l-4 border-green-500' : 'border-l-4 border-gray-300'
+                  key={item.id}
+                  className={`bg-white rounded-lg shadow p-6 transition-colors ${
+                    item.isTaken ? 'bg-green-50 border-l-4 border-green-500' : 'border-l-4 border-gray-300'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-4">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {record.medication_record?.medication?.drug_name || '薬剤名不明'}
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-sm font-bold px-2 py-0.5 rounded ${
+                          item.isTimeSpecific ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {item.isTimeSpecific ? item.scheduledTime : '随時'}
+                        </span>
+                        {!item.isTimeSpecific && (
+                          <span className="text-xs text-gray-500">{item.instructions}</span>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {item.medicationName}
                       </h3>
-                      <p className="text-gray-600 text-sm mb-1">
-                        予定時刻: {formatTime(record.scheduled_time)}
-                      </p>
-                      {record.actual_time && (
-                        <p className="text-gray-600 text-sm">
-                          実際の服用時刻: {formatTime(record.actual_time)}
-                        </p>
-                      )}
                     </div>
-                    <div className="text-right">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                          record.taken
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {record.taken ? '服用済み' : '未服用'}
-                      </span>
-                    </div>
+                    
+                    <button
+                      onClick={() => handleMarkDoseTaken(item)}
+                      disabled={item.isTaken}
+                      className={`px-6 py-3 rounded-full font-bold shadow-sm transition-all ${
+                        item.isTaken
+                          ? 'bg-green-500 text-white cursor-default'
+                          : 'bg-white border-2 border-blue-500 text-blue-500 hover:bg-blue-50 active:scale-95'
+                      }`}
+                    >
+                      {item.isTaken ? '服用済み' : '服用する'}
+                    </button>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">用量:</span>
-                      <p className="text-gray-600">
-                        {record.medication_record?.dosage_amount || 0}
-                        {record.medication_record?.dosage_unit || ''}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">処方医:</span>
-                      <p className="text-gray-600">
-                        {record.medication_record?.prescribed_by || '未記録'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">医療機関:</span>
-                      <p className="text-gray-600">
-                        {record.medication_record?.hospital_name || '未記録'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {record.notes && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                      <span className="font-medium text-gray-700">メモ:</span>
-                      <p className="text-gray-600 mt-1">{record.notes}</p>
-                    </div>
-                  )}
-
-                  {record.medication_record?.instructions && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-md">
-                      <span className="font-medium text-blue-700">服用方法:</span>
-                      <p className="text-blue-600 mt-1">{record.medication_record.instructions}</p>
-                    </div>
-                  )}
-
-                  {!record.taken && (
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        onClick={() => handleMarkDoseTaken(record.id)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                      >
-                        服用完了
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

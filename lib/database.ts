@@ -147,24 +147,16 @@ export const medicationRecordService = {
   }
 };
 
-export const doseRecordService = { /* 「服用記録」を管理する役割 */
-  async createDoseRecord(userId: string, medicationRecordId: string, scheduledTime: string): Promise<DoseRecord | null> { /* 服用記録を作成する関数 */
+export const doseRecordService = {
+  async createDoseRecord(userId: string, record: Omit<DoseRecord, 'id' | 'created_at' | 'updated_at' | 'medication_record'>): Promise<DoseRecord> {// これは服用記録を作成する関数。Omit<A, B>: A から B を除外した型を作る。ここでは DoseRecord から id, created_at, updated_at, medication_record を除外した型を表す。
     const { data, error } = await supabase
       .from('dose_records')
       .insert({
-        user_id: userId,
-        medication_record_id: medicationRecordId,
-        scheduled_time: scheduledTime,
-        taken: false
+        ...record,
+        user_id: userId
       })
-      .select(`
-        *,
-        medication_record:medication_records(
-          *,
-          medication:medications(*)
-        )
-      `) /* 2段階JOIN */
-      .single();
+      .select()// 追加したデータを、そのまま返すという意味
+      .single();// 結果は1件だけのはずだから、リスト（配列）じゃなくて、1個のデータとして返すという意味
 
     if (error) {
       console.error('Error creating dose record:', error);
@@ -174,26 +166,15 @@ export const doseRecordService = { /* 「服用記録」を管理する役割 */
     return data;
   },
 
-  async markDoseTaken(id: string, actualTime?: string, notes?: string): Promise<DoseRecord | null> { /* 服用記録を「服用済み」としてマークする関数 */
-    const { data, error } = await supabase /* ?　は任意の値を表すために使われる */
+  async markDoseTaken(id: string, taken: boolean = true, actualTime: string = new Date().toISOString()): Promise<DoseRecord> {// 飲んだことを記録する関数
+    const { data, error } = await supabase
       .from('dose_records')
-      .update({
-        taken: true,
-        actual_time: actualTime || new Date().toISOString(), 
-        /* || (OR演算子) の動作: 左側が truthy → 左側を使う。左側が falsy (undefined, null) → 右側を使う。 
-         * new Date()は現在の日時を表すJavaScript の組み込みオブジェクト。
-         * .toISOString()はDate オブジェクトを ISO 8601形式の文字列に変換するメソッド。ISO 8601形式とは国際標準規格の日時表現形式
-         */
-        notes: notes
+      .update({ 
+        taken, 
+        actual_time: taken ? actualTime : null // 三項演算子（条件 ? A : B）
       })
-      .eq('id', id)
-      .select(`
-        *,
-        medication_record:medication_records(
-          *,
-          medication:medications(*)
-        )
-      `)
+      .eq('id', id)// 左側の 'id' は SQL のカラム名「id」のこと。右側の id はTypeScriptの変数 id （関数の引数でもらった値）のこと。
+      .select()
       .single();
 
     if (error) {

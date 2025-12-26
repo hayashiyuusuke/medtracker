@@ -9,6 +9,7 @@ import SimpleQRReader from '../../../components/SimpleQRReader';
 import MultipleMedicationsModal from '../../../components/MultipleMedicationsModal';
 import { processQrCode } from '../../../lib/unifiedQrParser';
 import MedicationSearch from '../../../components/MedicationSearch';
+import { inferNotificationTimes } from '../../../lib/timeUtils';
 import type { Medication, MedicationRecordFormData, ParsedMedication } from '../../../types/database';
 
 function NewMedicationPage() {
@@ -90,6 +91,9 @@ function NewMedicationPage() {
 
   // 薬剤選択後の処理
   const handleSelectMedication = (medication: ParsedMedication) => {
+    // 用法から通知時間を自動推測
+    const inferredTimes = inferNotificationTimes(medication.usage_text);
+
     const newFormData = {
       prescription_date: new Date().toISOString().split('T')[0], /* new Date()で現在の日付を取得し、ISO形式の文字列に変換してから、T以前と以降の二つのオブジェクトに分けて、[0]で一つ目のオブジェクトを取得 */
       prescribed_by: '',
@@ -102,6 +106,7 @@ function NewMedicationPage() {
       duration_days: parseInt(medication.days || '1') || 1,
       total_amount: parseInt(medication.quantity || '0') || 0,
       instructions: medication.usage_text, // usage_textが入っている
+      notification_times: inferredTimes // 自動推測した時間をセット
     };
 
     setFormData(prev => ({ ...prev, ...newFormData }));
