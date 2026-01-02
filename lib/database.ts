@@ -148,7 +148,7 @@ export const medicationRecordService = {
 };
 
 export const doseRecordService = {
-  async createDoseRecord(userId: string, record: Omit<DoseRecord, 'id' | 'created_at' | 'updated_at' | 'medication_record'>): Promise<DoseRecord> {// これは服用記録を作成する関数。Omit<A, B>: A から B を除外した型を作る。ここでは DoseRecord から id, created_at, updated_at, medication_record を除外した型を表す。
+  async createDoseRecord(userId: string, record: Omit<DoseRecord, 'id' | 'created_at' | 'updated_at' | 'medication_record'>): Promise<DoseRecord> {// これは服用記録を作成する関数。Omit<A, B>: A から B を除外した型を作る。ここでは DoseRecord から id, created_at, updated_at, medication_record を除外した型を表す。除外する理由は、ユーザー（フロントエンド）が入力するデータではないから
     const { data, error } = await supabase
       .from('dose_records')
       .insert({
@@ -164,6 +164,20 @@ export const doseRecordService = {
     }
 
     return data;
+  },
+
+  async deleteDoseRecord(id: string): Promise<boolean> {// 服用記録を削除する関数
+    const { error } = await supabase
+      .from('dose_records')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting dose record:', error);
+      throw error;
+    }
+
+    return true;
   },
 
   async markDoseTaken(id: string, taken: boolean = true, actualTime: string = new Date().toISOString()): Promise<DoseRecord> {// 飲んだことを記録する関数

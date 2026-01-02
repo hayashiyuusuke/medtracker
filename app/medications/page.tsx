@@ -109,7 +109,7 @@ export default function MedicationsPage() {/* コンポーネント宣言とし�
               </h3>
               <Link
                 href="/medications/new"
-                className="inline-flex items-center px-6 py-3 bg-[#96b786] text-black rounded-md hover:bg-[#66904f] shadow-lg active:scale-95"
+                className="inline-flex items-center bg-[#96b786] text-black px-6 py-3 rounded-md hover:scale-105 font-medium active:scale-95"
               >
                 処方記録を追加
               </Link>

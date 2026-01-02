@@ -6,10 +6,12 @@
  * - ユーザーにアプリ名とメインナビゲーションを提供
  * - すべてのページで一貫したブランディングを維持
  */
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
-
+import {useState} from 'react';
+import { is } from 'date-fns/locale';
 /**
  * ヘッダーコンポーネント
  * 
@@ -20,8 +22,10 @@ import Link from 'next/link';
  * もしlayout.tsxに直接書いたらどんな問題があるでしょうか？
  */
 export default function Header() {
+  
   console.log('🎯 [開始] Headerコンポーネントがレンダリング開始されました');
-
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // モバイルメニューの開閉状態を管理
+  
   return (
     <header 
       className="sticky top-0 z-50 bg-[#cee6c1] text-white shadow-sm"
@@ -88,21 +92,55 @@ export default function Header() {
               📱 [モバイル用] スマートフォン表示用のハンバーガーメニューボタン
               今回は簡単な実装にしますが、本格的なアプリでは開閉機能が必要
             */}
-            <button 
-              className="md:hidden p-2 rounded-md hover:bg-[#66904f] shadow-sm transition-colors"
-              aria-label="メニューを開く"
-              aria-expanded="false" // アクセシビリティ: メニューの開閉状態
+            {/* ハンバーガーボタン */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)} // クリックで反転
+              className="p-2 rounded-md text-gray-700 hover:bg-gray-200 focus:outline-none"
             >
-              <span className="text-xl text-black">☰</span>
+              {/* アイコン（SVG） */}
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                {isMenuOpen ? (
+                  // 開いている時は「×」アイコン
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  // 閉じている時は「三」アイコン
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
             </button>
           </nav>
         </div>
       </div>
-
-      {/* 
-        🧠 [問い] なぜ上記のconsole.logを削除する必要があったのでしょうか？
-        JSX内でのJavaScript実行とReactNodeの違いについて考えてみてください。
-      */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-[#cee6c1]">
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            <Link
+              href="/"
+              className="block text-gray-700 hover:bg-gray-200 rounded-md px-2 py-1"
+              aria-current="page"
+            >
+              ホーム
+            </Link>
+            <Link
+              href="/medications/new"
+              className="block text-gray-700 hover:bg-gray-200 rounded-md px-2 py-1"
+            >
+              新しい処方記録
+            </Link>
+            <Link
+              href="/history"
+              className="block text-gray-700 hover:bg-gray-200 rounded-md px-2 py-1"
+            >
+              履歴
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

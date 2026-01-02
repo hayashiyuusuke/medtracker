@@ -99,7 +99,6 @@ function NewMedicationPage() {
       prescribed_by: '',
       hospital_name: '',
       pharmacy_name: '',
-      medication_name: medication.name,
       dosage_amount: 0, // デフォルト
       dosage_unit: medication.unit || '錠',
       frequency_per_day: 0, // デフォルト
@@ -132,9 +131,11 @@ function NewMedicationPage() {
     setError('');
 
     try {
+      const inferredTimes = inferNotificationTimes(formData.instructions);
       const recordData = {
         ...formData,
-        medication_id: selectedMedication.id/* formData + medication_id（選択された薬剤ID）= recordData */
+        medication_id: selectedMedication.id, // formData + medication_id（選択された薬剤ID）= recordData
+        notification_times: inferredTimes // 自動推測した時間をセット
       };
 
       const result = await medicationRecordService.createMedicationRecord(user.id, recordData);
@@ -170,7 +171,7 @@ function NewMedicationPage() {
                 setScanStatus('');
                 setShowQRReader(true);
               }}
-              className="w-full bg-[#96b786] text-black px-6 py-3 rounded-md hover:bg-[#66904f] font-medium active:scale-95"
+              className="w-full bg-[#96b786] text-black px-6 py-3 rounded-md hover:scale-105 font-medium active:scale-95"
             >
               QRコードをスキャン（連続読み取り対応）
             </button>
@@ -259,8 +260,11 @@ function NewMedicationPage() {
                 </label>
                 <input
                   type="number"
-                  value={formData.duration_days}
-                  onChange={(e) => setFormData(prev => ({ ...prev, duration_days: parseInt(e.target.value) || 0 }))}
+                  value={formData.duration_days === 0 ? '' : formData.duration_days}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData(prev => ({ ...prev, duration_days: val === '' ? 0 : parseInt(val) }));
+                  }}
                   min="1"
                   className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -273,8 +277,11 @@ function NewMedicationPage() {
                 <div className="flex">
                   <input
                     type="number"
-                    value={formData.total_amount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, total_amount: parseInt(e.target.value) || 0 }))}
+                    value={formData.total_amount === 0 ? '' : formData.total_amount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData(prev => ({ ...prev, total_amount: val === '' ? 0 : parseInt(val) }));
+                    }}
                     min="1"
                     className="text-gray-900 w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />

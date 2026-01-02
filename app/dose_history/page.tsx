@@ -7,16 +7,18 @@ import { doseRecordService, medicationRecordService } from '../../lib/database';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { hasFrequencyLimit } from '../../lib/timeUtils';
 import type { DoseRecord, MedicationRecord } from '../../types/database';
+import { te } from 'date-fns/locale';
+import { fa } from 'zod/locales';
 
 interface DoseScheduleItem {// データベースには存在しない、画面表示専用の型
   id: string; // 既存のDoseRecord ID または 一時的なID（服用した薬剤データにつけられるID）
   medicationRecordId: string;// MedicationRecordのID（服用に限らず全ての薬剤データにつけられているID）
   medicationName: string;
-  scheduledTime: string; // "08:00" などの時刻文字列
+  scheduledTime: string; // "08:00" などの時刻文字列（ただの文字列）
   isTaken: boolean;// notific
   doseRecordId?: string; // 既に記録がある場合 DoseRecord ID
   instructions?: string; // 用法（時間がない場合用）
-  isTimeSpecific: boolean; // 時間指定があるかどうか
+  isTimeSpecific: boolean; // 時間指定があるかどうか（適宜薬と定期薬の区別のため必要）
 }
 
 /**
@@ -106,6 +108,16 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                   isTimeSpecific: false
                 });
               });
+              items.push({
+                id: `temp-${med.id}-new`,// Reactでリストを表示する際（map関数を使う時）には、それぞれの項目に重複しない key（ID）が必要。そのため、まだデータがない項目にも「仮のID」を割り振る必要がある。
+                medicationRecordId: med.id,
+                medicationName: med.medication?.drug_name || '名称不明',
+                scheduledTime: '-',
+                isTaken: false,
+                doseRecordId: undefined, // まだ記録がないので
+                instructions: med.instructions || '適宜',
+                isTimeSpecific: false
+              });
             }
           }
         });
@@ -154,8 +166,27 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
 
   const handleMarkDoseTaken = async (item: DoseScheduleItem) => {
     try {
-      if (item.isTaken) return;
-
+      // 服用済みの場合：未服用に戻す（取り消し処理）
+      if (item.isTaken) {
+        if (item.doseRecordId) {
+          await doseRecordService.deleteDoseRecord(item.doseRecordId);
+          setScheduleItems(prev => {
+            const newLists = prev.map(i =>// mapがforEachと違うところ＝「配列の要素を1つずつ取り出して、変換して、新しい配列を作る」。変換後の新しい配列が戻り値になる。
+              i.id === item.id ? { ...i, doseRecordId: undefined, isTaken: false } : i
+            );
+            if (!item.isTimeSpecific) {// 時間指定なし薬の場合(適宜薬)、未服用に戻したらその枠を削除
+              return newLists.filter(i => 
+                i.id === item.id ||// 今操作したボタンである、または
+                i.medicationRecordId !== item.medicationRecordId ||// 違う薬である、または
+                i.isTaken === true// 服用済みである
+              );
+            }
+            return newLists;
+          });
+        }
+        return;
+      }                   
+      // 未服用の場合：服用済みにする
       if (!item.doseRecordId) {// 論理NOT演算子
         // 新規作成
         const newRecord = await doseRecordService.createDoseRecord(user!.id, {// 非nullアサーション演算子: user が null でないことを TypeScript に伝える
@@ -166,9 +197,24 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
           actual_time: new Date().toISOString()
         });
         
-        setScheduleItems(prev => prev.map(i => // prev = scheduleItems の最新の値
-          i.id === item.id ? { ...i, isTaken: true, doseRecordId: newRecord.id } : i// ...i: 既存のオブジェクトの全プロパティを展開（コピー）し、isTaken と doseRecordId を上書き
-        ));
+        setScheduleItems(prev => {
+          const newList = prev.map(i =>
+            i.id === item.id ? { ...i, isTaken: true, doseRecordId: newRecord.id } : i// ...i: 既存のオブジェクトの全プロパティを展開（コピー）し、isTaken と doseRecordId を上書き
+          );
+          if (!item.isTimeSpecific) {
+            newList.push({// 時間指定なし薬の場合、新たに服用枠を追加
+              id: `temp-${item.medicationRecordId}-${Date.now()}`,
+              medicationRecordId: item.medicationRecordId,
+              medicationName: item.medicationName,
+              scheduledTime: '-',
+              isTaken: false,
+              instructions: item.instructions,
+              isTimeSpecific: false
+            });
+          }
+          return newList;
+        }); // prev = scheduleItems の最新の値
+      
       } else {
         // 更新
         await doseRecordService.markDoseTaken(item.doseRecordId);
@@ -195,7 +241,26 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
       </ProtectedRoute>
     );
   }
-
+ 
+  const groupedItems = scheduleItems.reduce((acc, item) => {
+    const key = item.medicationRecordId;
+    if (!acc[key]) {
+      acc[key] = {
+        medicationName: item.medicationName, // 薬の名前も保存しておく
+        instructions: item.instructions,     // 用法も保存しておく
+        isTimeSpecific: item.isTimeSpecific, // タイプも保存しておく
+        items: []                            // ボタンを入れる配列はここ！;
+      };
+    }
+    acc[key].items.push(item);
+    return acc;
+  }, {} as Record<string, {
+    medicationName: string;
+    instructions?: string;
+    isTimeSpecific: boolean;
+    items: DoseScheduleItem[]
+  }>);
+ 
   return (
     <ProtectedRoute>
       <div className="min-h-screen py-8 bg-[#cee6c1]">
@@ -203,13 +268,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
           
           {/* ページヘッダー */}
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl text-gray-700">服用履歴</h1>
-            <Link
-              href="/"
-              className="bg-white text-gray-700 px-6 py-3 rounded-md hover:bg-gray-50 font-medium shadow-sm"
-            >
-              ホーム
-            </Link>
+            <h1 className="text-3xl text-gray-700">服薬チェック</h1>
           </div>
 
           {/* 日付選択 */}
@@ -223,7 +282,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                 id="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-gray-700 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -244,6 +303,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+
                 >
                   <path
                     strokeLinecap="round"
@@ -262,41 +322,30 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
             </div>
           ) : (
             <div className="space-y-4">
-              {scheduleItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`bg-white rounded-lg shadow p-6 transition-colors ${
-                    item.isTaken ? 'bg-green-50 border-l-4 border-green-500' : 'border-l-4 border-gray-300'
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-sm font-bold px-2 py-0.5 rounded ${
-                          item.isTimeSpecific ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {item.isTimeSpecific ? item.scheduledTime : '随時'}
-                        </span>
-                        {!item.isTimeSpecific && (
-                          <span className="text-xs text-gray-500">{item.instructions}</span>
-                        )}
-                      </div>
-                      <h3 className="text-xl font-semibold text-gray-900">
-                        {item.medicationName}
-                      </h3>
-                    </div>
-                    
-                    <button
-                      onClick={() => handleMarkDoseTaken(item)}
-                      disabled={item.isTaken}
-                      className={`px-6 py-3 rounded-full font-bold shadow-sm transition-all ${
-                        item.isTaken
-                          ? 'bg-green-500 text-white cursor-default'
+              {Object.values(groupedItems).map((group) => (// groupedItems はオブジェクトのため配列を取り出さないとmap関数が使えない(オブジェクトには番号が割り振られていなくて、配列には番号が割り振られている)
+                <div key={group.medicationName} className={`bg-white rounded-lg shadow p-6 mb-4`}>
+                  {/* 薬の名前 */}
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
+                    {group.medicationName}
+                  </h3>
+                  {/* ボタンのリスト */}
+                  <div className="flex flex-wrap gap-2">
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleMarkDoseTaken(item)}
+                        className={`px-4 py-2 text-sm rounded-full font-bold shadow-sm transition-all ${
+                          item.isTaken
+                            ? 'bg-green-500 text-white hover:bg-green-600 active:scale-95'
                           : 'bg-white border-2 border-blue-500 text-blue-500 hover:bg-blue-50 active:scale-95'
-                      }`}
-                    >
-                      {item.isTaken ? '服用済み' : '服用する'}
-                    </button>
+                        }`}
+                      >
+                        {item.isTaken ? '服用済み' : '服用する '}
+                        {/* 時間指定があるなら時間を、なければ用法（1回目など）を表示 */}
+                        {item.isTimeSpecific ? item.scheduledTime : item.instructions}
+                        {item.isTaken ? ' (済)' : ''}
+                      </button>
+                    ))}
                   </div>
                 </div>
               ))}

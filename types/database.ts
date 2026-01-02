@@ -1,4 +1,4 @@
-export interface Medication {
+export interface Medication { // 薬剤情報の型定義
   id: string;
   drug_name: string;
   generic_name?: string;
@@ -12,7 +12,7 @@ export interface Medication {
   updated_at?: string;
 }
 
-export interface MedicationRecord {
+export interface MedicationRecord {// 処方記録の型定義
   id: string;
   user_id: string;
   medication_id: string;
@@ -32,7 +32,7 @@ export interface MedicationRecord {
   medication?: Medication;
 }
 
-export interface MedicationRecordFormData {
+export interface MedicationRecordFormData {// 処方記録の入力フォームのデータ型定義（まだ保存されていないから id や user_id がない。MedicationRecordを入力フォームのデータ型に使うとidがなくてエラーになってしまうため、この型が必要。）
   prescription_date: string;
   prescribed_by: string;
   hospital_name: string;
@@ -46,7 +46,7 @@ export interface MedicationRecordFormData {
   notification_times?: string[];
 }
 
-export interface DoseRecord {
+export interface DoseRecord {//服用チェックデータの型定義
   id: string;
   user_id: string;
   medication_record_id: string;
@@ -69,7 +69,7 @@ export interface MedicationData {
 }
 
 // QRコード解析結果の薬剤情報型（unifiedQrParser用）
-export interface ParsedMedication {
+export interface ParsedMedication {// MedicationRecord に変換される前の「中間データ」
   name: string;       // 薬剤名
   usage_text: string; // 用法・用量（表示用・正データ）
   estimated_count?: number | null; // 推定1日回数

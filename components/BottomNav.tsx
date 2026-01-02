@@ -19,7 +19,11 @@ export default function BottomNav() {
         {/* 処方一覧リンク */}
         <Link
           href="/medications"
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors text-black hover:bg-[#66904f] active:scale-95`}
+          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors ${
+            isActive('/medications') 
+              ? 'text-black bg-[#96b786]' // アクティブ時
+              : 'text-black hover:bg-[#96b786]' // 非アクティブ時
+          }`}
         >
           {/* 処方箋アイコン */}
           <svg
@@ -41,7 +45,11 @@ export default function BottomNav() {
         {/* 処方登録リンク（メイン機能として強調） */}
         <Link
           href="/medications/new"
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors text-black hover:bg-[#66904f] active:scale-95`}
+          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors ${
+            isActive('/medications/new') 
+              ? 'text-black bg-[#96b786]' // アクティブ時
+              : 'text-black hover:bg-[#96b786]' // 非アクティブ時
+          }`}
         >
           {/* 追加アイコン */}
           <svg
@@ -62,8 +70,12 @@ export default function BottomNav() {
 
         {/* 服用履歴リンク */}
         <Link
-          href="/history"
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors text-black hover:bg-[#66904f] active:scale-95`}
+          href="/dose_history"
+          className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg transition-colors ${
+            isActive('/dose_history') 
+              ? 'text-black bg-[#96b786]' // アクティブ時
+              : 'text-black hover:bg-[#96b786]' // 非アクティブ時
+          }`}
         >
           {/* 履歴アイコン */}
           <svg
@@ -76,10 +88,10 @@ export default function BottomNav() {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
             />
           </svg>
-          <span className="text-xs font-medium">服用履歴</span>
+          <span className="text-xs font-medium">服薬チェック</span>
         </Link>
       </div>
     </nav>
