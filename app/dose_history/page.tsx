@@ -19,6 +19,7 @@ interface DoseScheduleItem {// データベースには存在しない、画面�
   doseRecordId?: string; // 既に記録がある場合 DoseRecord ID
   instructions?: string; // 用法（時間がない場合用）
   isTimeSpecific: boolean; // 時間指定があるかどうか（適宜薬と定期薬の区別のため必要）
+  maxCount?: number; // 1日あたりの服用回数（必要に応じて追加）
 }
 
 /**
@@ -90,7 +91,8 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                   isTaken: existingRecord?.taken || false,
                   doseRecordId: existingRecord?.id,
                   instructions: med.instructions || `${i + 1}回目`,
-                  isTimeSpecific: false
+                  isTimeSpecific: false,
+                  maxCount: count
                 });
               }
             } else {
@@ -105,7 +107,8 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                   isTaken: existingRecord.taken,
                   doseRecordId: existingRecord.id,
                   instructions: med.instructions || '適宜',
-                  isTimeSpecific: false
+                  isTimeSpecific: false,
+                  maxCount: med.frequency_per_day
                 });
               });
               items.push({
@@ -116,7 +119,8 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                 isTaken: false,
                 doseRecordId: undefined, // まだ記録がないので
                 instructions: med.instructions || '適宜',
-                isTimeSpecific: false
+                isTimeSpecific: false,
+                maxCount: med.frequency_per_day
               });
             }
           }
@@ -175,7 +179,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
               i.id === item.id ? { ...i, doseRecordId: undefined, isTaken: false } : i
             );
             if (!item.isTimeSpecific) {// 時間指定なし薬の場合(適宜薬)、未服用に戻したらその枠を削除
-              return newLists.filter(i => 
+              return newLists.filter(i => //fillter(...): 配列の要素を一つずつ調べて、条件に合うものだけを残して新しい配列を作る
                 i.id === item.id ||// 今操作したボタンである、または
                 i.medicationRecordId !== item.medicationRecordId ||// 違う薬である、または
                 i.isTaken === true// 服用済みである
@@ -201,7 +205,12 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
           const newList = prev.map(i =>
             i.id === item.id ? { ...i, isTaken: true, doseRecordId: newRecord.id } : i// ...i: 既存のオブジェクトの全プロパティを展開（コピー）し、isTaken と doseRecordId を上書き
           );
-          if (!item.isTimeSpecific) {
+          if (!item.isTimeSpecific) {// 時間指定なし薬の場合(適宜薬)、新たに服用枠を追加する必要があるかチェック
+            const currentCount = newList.filter(i => i.medicationRecordId === item.medicationRecordId).length;
+            const maxLimit = item.maxCount || 999;
+            if(currentCount >= maxLimit) {
+              return newList;
+            }
             newList.push({// 時間指定なし薬の場合、新たに服用枠を追加
               id: `temp-${item.medicationRecordId}-${Date.now()}`,
               medicationRecordId: item.medicationRecordId,
@@ -209,7 +218,8 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
               scheduledTime: '-',
               isTaken: false,
               instructions: item.instructions,
-              isTimeSpecific: false
+              isTimeSpecific: false,
+              maxCount: item.maxCount
             });
           }
           return newList;
@@ -242,10 +252,11 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
     );
   }
  
-  const groupedItems = scheduleItems.reduce((acc, item) => {
+  const groupedItems = scheduleItems.reduce((acc, item) => {// reduce(...): JavaScript の配列メソッド。配列を1つの値（ここではオブジェクト）にまとめる。
     const key = item.medicationRecordId;
     if (!acc[key]) {
       acc[key] = {
+        medicationRecordId: item.medicationRecordId,
         medicationName: item.medicationName, // 薬の名前も保存しておく
         instructions: item.instructions,     // 用法も保存しておく
         isTimeSpecific: item.isTimeSpecific, // タイプも保存しておく
@@ -255,6 +266,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
     acc[key].items.push(item);
     return acc;
   }, {} as Record<string, {
+    medicationRecordId: string;
     medicationName: string;
     instructions?: string;
     isTimeSpecific: boolean;
@@ -323,7 +335,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
           ) : (
             <div className="space-y-4">
               {Object.values(groupedItems).map((group) => (// groupedItems はオブジェクトのため配列を取り出さないとmap関数が使えない(オブジェクトには番号が割り振られていなくて、配列には番号が割り振られている)
-                <div key={group.medicationName} className={`bg-white rounded-lg shadow p-6 mb-4`}>
+                <div key={group.medicationRecordId} className={`bg-white rounded-lg shadow p-6 mb-4`}>
                   {/* 薬の名前 */}
                   <h3 className="text-xl font-semibold text-gray-900 mb-4">
                     {group.medicationName}
