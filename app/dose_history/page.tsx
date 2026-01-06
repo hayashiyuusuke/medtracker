@@ -7,7 +7,7 @@ import { doseRecordService, medicationRecordService } from '../../lib/database';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import { hasFrequencyLimit } from '../../lib/timeUtils';
 import type { DoseRecord, MedicationRecord } from '../../types/database';
-import { te } from 'date-fns/locale';
+import { el, te } from 'date-fns/locale';
 import { fa } from 'zod/locales';
 
 interface DoseScheduleItem {// データベースには存在しない、画面表示専用の型
@@ -76,12 +76,19 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
           // B. 通知時間がない（「適宜服用」や「疼痛時」など）場合
           else {
             // 回数制限がある場合のみ枠を作る
-            if (hasFrequencyLimit(med.instructions || '')) {
-              const count = med.frequency_per_day || 1;
-              for (let i = 0; i < count; i++) {
+            let limit = med.frequency_per_day || 0;
+            // frequency_per_dayがない場合、用法テキストから回数を抽出を試みる
+            if (!limit && med.instructions) {
+              const match = med.instructions.match(/(\d+)回/);
+              if (match) {
+                limit = parseInt(match[1], 10);
+              }
+            }
+
+            if (limit > 0) {
+              for (let i = 0; i < limit; i++) {
                 // この薬の記録のうち、時間指定がないもの（または手動記録）を順番に割り当てる
-                // ※ 簡易実装：本来はもっと厳密な紐付けが必要
-                const existingRecord = doseRecords.filter(d => d.medication_record_id === med.id)[i];// .filter()	条件を満たす全ての要素
+                const existingRecord = doseRecords.filter(d => d.medication_record_id === med.id)[i];
 
                 items.push({
                   id: existingRecord?.id || `temp-${med.id}-dose-${i}`,
@@ -92,7 +99,7 @@ const DoseHistoryPage = () => {// 服用履歴ページ - ユーザーの薬剤�
                   doseRecordId: existingRecord?.id,
                   instructions: med.instructions || `${i + 1}回目`,
                   isTimeSpecific: false,
-                  maxCount: count
+                  maxCount: limit
                 });
               }
             } else {
